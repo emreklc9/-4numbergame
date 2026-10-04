@@ -4,6 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { getGold } from '../game/gold';
+import BrandLogo from '../components/BrandLogo';
 
 export default function HomeScreen({
   navigation,
@@ -24,9 +25,7 @@ export default function HomeScreen({
         <Text style={styles.goldLabel}>ALTIN</Text>
       </View>
       <View style={styles.hero}>
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>+−</Text>
-        </View>
+        <BrandLogo size={76} />
         <Text style={styles.title}>Sayı Avı</Text>
         <Text style={styles.subtitle}>
           Gizli sayıyı en az tahminle bul. Her işaret seni doğru cevaba yaklaştırır.
@@ -73,22 +72,7 @@ const styles = StyleSheet.create({
   goldAmount: { color: '#92400e', fontSize: 17, fontWeight: '800' },
   goldLabel: { color: '#b45309', fontSize: 10, fontWeight: '800', letterSpacing: 0.6 },
   hero: { alignItems: 'center', marginBottom: 52 },
-  logo: {
-    width: 76,
-    height: 76,
-    borderRadius: 24,
-    backgroundColor: '#1d4ed8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    shadowColor: '#1d4ed8',
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 5,
-  },
-  logoText: { color: '#fff', fontSize: 36, fontWeight: '800' },
-  title: { fontSize: 38, fontWeight: '800', color: '#0f172a' },
+  title: { fontSize: 38, fontWeight: '800', color: '#0f172a', marginTop: 20 },
   subtitle: { fontSize: 16, lineHeight: 24, color: '#64748b', textAlign: 'center', marginTop: 10 },
   actions: { gap: 14 },
   button: {

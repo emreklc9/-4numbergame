@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -6,7 +6,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import {
@@ -18,6 +17,8 @@ import {
 } from '../game/logic';
 import { addRecord } from '../game/records';
 import { addGold, getGold } from '../game/gold';
+import LoadingScreen from '../components/LoadingScreen';
+import ConfettiBurst from '../components/ConfettiBurst';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 
@@ -32,13 +33,26 @@ export default function GameScreen({
   const [error, setError] = useState<string | null>(null);
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [gold, setGold] = useState(0);
-  const inputRefs = useRef<Array<TextInput | null>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [lockedDigits, setLockedDigits] = useState<boolean[]>(() => Array(digits).fill(false));
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [eliminatedDigits, setEliminatedDigits] = useState<string[]>([]);
   const won = attempts.length > 0 && attempts[0].feedback.plus === digits;
   const nextReward = Math.max(20 - attempts.length, 1);
   const goldReward = Math.max(21 - attempts.length, 1);
 
   useEffect(() => {
-    getGold().then(setGold);
+    let active = true;
+    const timeout = setTimeout(() => setIsLoading(false), 700);
+
+    getGold().then((value) => {
+      if (active) setGold(value);
+    });
+
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+    };
   }, []);
 
   const submit = () => {
@@ -51,26 +65,60 @@ export default function GameScreen({
     setError(null);
     const feedback = evaluateGuess(secret, guess);
     setAttempts([{ guess, feedback }, ...attempts]);
-    setInput(Array(digits).fill(''));
-    requestAnimationFrame(() => inputRefs.current[0]?.focus());
+    setInput((current) => current.map((value, index) => (lockedDigits[index] ? value : '')));
+    const firstUnlockedIndex = lockedDigits.findIndex((locked) => !locked);
+    setActiveIndex(firstUnlockedIndex === -1 ? 0 : firstUnlockedIndex);
     if (feedback.plus === digits) {
       addRecord(attempts.length + 1, digits);
       addGold(nextReward).then(setGold);
     }
   };
 
-  const setDigit = (index: number, value: string) => {
-    const digit = value.replace(/\D/g, '').slice(-1);
-    setInput((current) => current.map((item, itemIndex) => (itemIndex === index ? digit : item)));
-    if (digit && index < digits - 1) inputRefs.current[index + 1]?.focus();
+  const nextUnlockedIndex = (startIndex: number, locks = lockedDigits): number => {
+    for (let index = startIndex + 1; index < digits; index++) {
+      if (!locks[index]) return index;
+    }
+    return startIndex;
+  };
+
+  const enterDigit = (digit: string) => {
+    if (lockedDigits[activeIndex]) return;
+
+    setInput((current) =>
+      current.map((value, index) => (index === activeIndex ? digit : value)),
+    );
+    setActiveIndex(nextUnlockedIndex(activeIndex));
+  };
+
+  const toggleLock = (index: number) => {
+    if (!input[index]) return;
+
+    const nextLocks = lockedDigits.map((locked, lockIndex) =>
+      lockIndex === index ? !locked : locked,
+    );
+    setLockedDigits(nextLocks);
+    if (nextLocks[index] && activeIndex === index) setActiveIndex(nextUnlockedIndex(index, nextLocks));
+  };
+
+  const toggleEliminatedDigit = (digit: string) => {
+    setEliminatedDigits((current) =>
+      current.includes(digit) ? current.filter((item) => item !== digit) : [...current, digit],
+    );
   };
 
   const restart = () => {
     setSecret(generateSecret(digits));
     setAttempts([]);
     setInput(Array(digits).fill(''));
+    setLockedDigits(Array(digits).fill(false));
+    setActiveIndex(0);
+    setEliminatedDigits([]);
     setError(null);
   };
+
+  if (isLoading) {
+    return <LoadingScreen message={`${digits} basamaklı oyun hazırlanıyor`} />;
+  }
 
   return (
     <KeyboardAvoidingView
@@ -80,6 +128,7 @@ export default function GameScreen({
       <View style={styles.goldBalance}>
         <Text style={styles.goldBalanceText}>{gold} Altın</Text>
       </View>
+      {won && <ConfettiBurst />}
       {won ? (
         <View style={styles.winBox}>
           <Text style={styles.winText}>🎉 {attempts.length} tahminde buldun!</Text>
@@ -95,26 +144,46 @@ export default function GameScreen({
         <>
           <Text style={styles.instruction}>{digits} basamaklı tahminini gir</Text>
           <Text style={styles.rewardPreview}>Bu turu kazanırsan {nextReward} altın</Text>
+          <Text style={styles.keypadHint}>Olmayan bir rakamı işaretlemek için tuşa basılı tut</Text>
           <View style={styles.digitInputs}>
             {input.map((value, index) => (
-              <TextInput
-                key={index}
-                ref={(element) => {
-                  inputRefs.current[index] = element;
-                }}
-                style={styles.input}
-                value={value}
-                onChangeText={(text) => setDigit(index, text)}
-                onKeyPress={({ nativeEvent }) => {
-                  if (nativeEvent.key === 'Backspace' && !value && index > 0) {
-                    inputRefs.current[index - 1]?.focus();
-                  }
-                }}
-                keyboardType="number-pad"
-                maxLength={1}
-                selectTextOnFocus
-                onSubmitEditing={submit}
-              />
+              <View key={index} style={styles.digitBox}>
+                <Pressable
+                  style={[
+                    styles.input,
+                    activeIndex === index && styles.activeInput,
+                    lockedDigits[index] && styles.lockedInput,
+                  ]}
+                  onPress={() => !lockedDigits[index] && setActiveIndex(index)}
+                >
+                  <Text style={styles.inputText}>{value}</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.lockButton, lockedDigits[index] && styles.lockButtonActive]}
+                  onPress={() => toggleLock(index)}
+                  disabled={!value}
+                  accessibilityLabel={lockedDigits[index] ? 'Kilidi aç' : 'Rakamı kilitle'}
+                >
+                  <Text style={[styles.lockText, lockedDigits[index] && styles.lockTextActive]}>
+                    {lockedDigits[index] ? '🔒' : '🔓'}
+                  </Text>
+                </Pressable>
+              </View>
+            ))}
+          </View>
+          <View style={styles.keypad}>
+            {['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].map((key) => (
+              <Pressable
+                key={key}
+                style={[styles.key, eliminatedDigits.includes(key) && styles.eliminatedKey]}
+                onPress={() => enterDigit(key)}
+                onLongPress={() => toggleEliminatedDigit(key)}
+                delayLongPress={300}
+              >
+                <Text style={[styles.keyText, eliminatedDigits.includes(key) && styles.eliminatedKeyText]}>
+                  {key}
+                </Text>
+              </Pressable>
             ))}
           </View>
           {error && <Text style={styles.error}>{error}</Text>}
@@ -152,7 +221,8 @@ const styles = StyleSheet.create({
   },
   goldBalanceText: { color: '#92400e', fontSize: 14, fontWeight: '800' },
   instruction: { color: '#475569', fontSize: 17, fontWeight: '600', textAlign: 'center', marginTop: 8 },
-  digitInputs: { flexDirection: 'row', justifyContent: 'center', gap: 10 },
+  digitInputs: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
+  digitBox: { alignItems: 'center', position: 'relative' },
   input: {
     width: 54,
     height: 64,
@@ -163,10 +233,44 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: '800',
     color: '#1e3a8a',
-    textAlign: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  activeInput: { borderWidth: 2, borderColor: '#2563eb' },
+  lockedInput: { backgroundColor: '#dbeafe', borderColor: '#60a5fa' },
+  inputText: { color: '#1e3a8a', fontSize: 30, fontWeight: '800' },
+  lockButton: {
+    position: 'absolute',
+    top: -7,
+    left: -7,
+    width: 24,
+    height: 24,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  lockButtonActive: { backgroundColor: '#1d4ed8' },
+  lockText: { color: '#475569', fontSize: 12 },
+  lockTextActive: { color: '#fff' },
+  keypad: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
+  key: {
+    width: '18%',
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  keyText: { color: '#1e293b', fontSize: 20, fontWeight: '800' },
+  eliminatedKey: { backgroundColor: '#fee2e2', borderColor: '#fca5a5' },
+  eliminatedKeyText: { color: '#b91c1c' },
   error: { color: '#dc2626', textAlign: 'center' },
   rewardPreview: { color: '#b45309', fontSize: 14, fontWeight: '700', textAlign: 'center', marginTop: -8 },
+  keypadHint: { color: '#64748b', fontSize: 12, textAlign: 'center', marginTop: -8 },
   button: { padding: 16, borderRadius: 14, backgroundColor: '#2563eb', alignItems: 'center' },
   buttonText: { color: '#fff', fontSize: 18, fontWeight: '700' },
   winBox: { gap: 12 },
