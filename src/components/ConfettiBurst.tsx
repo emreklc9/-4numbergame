@@ -1,13 +1,13 @@
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { useEffect, useMemo } from 'react';
 
-const COLORS = ['#f43f5e', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
+const DEFAULT_COLORS = ['#f43f5e', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
 
-export default function ConfettiBurst() {
+export default function ConfettiBurst({ colors = DEFAULT_COLORS }: { colors?: readonly string[] }) {
   const particles = useMemo(
     () =>
       Array.from({ length: 28 }, (_, index) => ({
-        color: COLORS[index % COLORS.length],
+        color: colors[index % colors.length],
         x: new Animated.Value(0),
         y: new Animated.Value(0),
         rotation: new Animated.Value(0),
@@ -16,7 +16,7 @@ export default function ConfettiBurst() {
         destinationY: Math.round(Math.random() * 320 + 100),
         spin: Math.round(Math.random() * 720 - 360),
       })),
-    [],
+    [colors],
   );
 
   useEffect(() => {

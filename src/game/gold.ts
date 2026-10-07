@@ -16,3 +16,18 @@ export async function addGold(amount: number): Promise<number> {
   await AsyncStorage.setItem(KEY, String(total));
   return total;
 }
+
+export async function spendGold(amount: number): Promise<number> {
+  if (!Number.isSafeInteger(amount) || amount < 1) {
+    throw new RangeError('Altın miktarı pozitif bir tam sayı olmalı');
+  }
+
+  const currentGold = await getGold();
+  if (currentGold < amount) {
+    throw new RangeError('Yeterli altının yok');
+  }
+
+  const total = currentGold - amount;
+  await AsyncStorage.setItem(KEY, String(total));
+  return total;
+}

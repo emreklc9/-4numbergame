@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   evaluateGuess,
   formatFeedback,
@@ -16,44 +17,62 @@ import {
   type Feedback,
 } from '../game/logic';
 import { addRecord } from '../game/records';
-import { addGold, getGold } from '../game/gold';
 import LoadingScreen from '../components/LoadingScreen';
 import ConfettiBurst from '../components/ConfettiBurst';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
+import { useCustomization } from '../game/CustomizationProvider';
+import { KEYPAD_SKINS, THEMES, WIN_EFFECTS } from '../game/store';
 
 type Attempt = { guess: string; feedback: Feedback };
 
+const REVEAL_HINT_COST = 1;
+const ELIMINATE_HINT_COST = 1;
+
 export default function GameScreen({
   route,
+  navigation,
 }: NativeStackScreenProps<RootStackParamList, 'Game'>) {
   const { digits } = route.params;
   const [secret, setSecret] = useState(() => generateSecret(digits));
   const [input, setInput] = useState<string[]>(() => Array(digits).fill(''));
   const [error, setError] = useState<string | null>(null);
   const [attempts, setAttempts] = useState<Attempt[]>([]);
-  const [gold, setGold] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [lockedDigits, setLockedDigits] = useState<boolean[]>(() => Array(digits).fill(false));
   const [activeIndex, setActiveIndex] = useState(0);
   const [eliminatedDigits, setEliminatedDigits] = useState<string[]>([]);
+  const [isUsingHelp, setIsUsingHelp] = useState(false);
+  const helpRequestInFlight = useRef(false);
+  const { gold, store, earnGold, spendGold } = useCustomization();
+  const theme = THEMES[store?.equipped.theme ?? 'classic'];
+  const keypadSkin = KEYPAD_SKINS[store?.equipped.keypad ?? 'classic'];
+  const effectColors = WIN_EFFECTS[store?.equipped.effect ?? 'confetti'];
   const won = attempts.length > 0 && attempts[0].feedback.plus === digits;
   const nextReward = Math.max(20 - attempts.length, 1);
   const goldReward = Math.max(21 - attempts.length, 1);
 
   useEffect(() => {
-    let active = true;
     const timeout = setTimeout(() => setIsLoading(false), 700);
-
-    getGold().then((value) => {
-      if (active) setGold(value);
-    });
-
-    return () => {
-      active = false;
-      clearTimeout(timeout);
-    };
+    return () => clearTimeout(timeout);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const tabNavigation = navigation.getParent();
+      tabNavigation?.setOptions({ tabBarStyle: { display: 'none' } });
+
+      return () => {
+        tabNavigation?.setOptions({
+          tabBarStyle: {
+            backgroundColor: theme.background,
+            borderTopColor: '#e2e8f0',
+            height: 66,
+          },
+        });
+      };
+    }, [navigation, theme.background]),
+  );
 
   const submit = () => {
     const guess = input.join('');
@@ -70,7 +89,7 @@ export default function GameScreen({
     setActiveIndex(firstUnlockedIndex === -1 ? 0 : firstUnlockedIndex);
     if (feedback.plus === digits) {
       addRecord(attempts.length + 1, digits);
-      addGold(nextReward).then(setGold);
+      earnGold(nextReward);
     }
   };
 
@@ -106,6 +125,64 @@ export default function GameScreen({
     );
   };
 
+  const useRevealHint = async () => {
+    if (helpRequestInFlight.current) return;
+
+    const availableIndexes = lockedDigits
+      .map((locked, index) => (locked ? -1 : index))
+      .filter((index) => index !== -1);
+    if (availableIndexes.length === 0) {
+      setError('Açılabilecek bir hane kalmadı');
+      return;
+    }
+
+    helpRequestInFlight.current = true;
+    setIsUsingHelp(true);
+    try {
+      await spendGold(REVEAL_HINT_COST);
+      const hintIndex = availableIndexes[Math.floor(Math.random() * availableIndexes.length)];
+      setInput((current) =>
+        current.map((value, index) => (index === hintIndex ? secret[index] : value)),
+      );
+      setLockedDigits((current) =>
+        current.map((locked, index) => (index === hintIndex ? true : locked)),
+      );
+      setActiveIndex(nextUnlockedIndex(hintIndex));
+      setError(null);
+    } catch (hintError) {
+      setError(hintError instanceof Error ? hintError.message : 'İpucu kullanılamadı');
+    } finally {
+      helpRequestInFlight.current = false;
+      setIsUsingHelp(false);
+    }
+  };
+
+  const useEliminateHint = async () => {
+    if (helpRequestInFlight.current) return;
+
+    const candidates = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].filter(
+      (digit) => !secret.includes(digit) && !eliminatedDigits.includes(digit),
+    );
+    if (candidates.length === 0) {
+      setError('İşaretlenecek rakam kalmadı');
+      return;
+    }
+
+    helpRequestInFlight.current = true;
+    setIsUsingHelp(true);
+    try {
+      await spendGold(ELIMINATE_HINT_COST);
+      const digit = candidates[Math.floor(Math.random() * candidates.length)];
+      setEliminatedDigits((current) => [...current, digit]);
+      setError(null);
+    } catch (hintError) {
+      setError(hintError instanceof Error ? hintError.message : 'İpucu kullanılamadı');
+    } finally {
+      helpRequestInFlight.current = false;
+      setIsUsingHelp(false);
+    }
+  };
+
   const restart = () => {
     setSecret(generateSecret(digits));
     setAttempts([]);
@@ -122,13 +199,13 @@ export default function GameScreen({
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.goldBalance}>
         <Text style={styles.goldBalanceText}>{gold} Altın</Text>
       </View>
-      {won && <ConfettiBurst />}
+      {won && <ConfettiBurst colors={effectColors} />}
       {won ? (
         <View style={styles.winBox}>
           <Text style={styles.winText}>🎉 {attempts.length} tahminde buldun!</Text>
@@ -145,6 +222,25 @@ export default function GameScreen({
           <Text style={styles.instruction}>{digits} basamaklı tahminini gir</Text>
           <Text style={styles.rewardPreview}>Bu turu kazanırsan {nextReward} altın</Text>
           <Text style={styles.keypadHint}>Olmayan bir rakamı işaretlemek için tuşa basılı tut</Text>
+          <View style={styles.helpPanel}>
+            <Text style={styles.helpTitle}>Yardımlar</Text>
+            <View style={styles.helpButtons}>
+              <Pressable
+                style={[styles.hintButton, gold < REVEAL_HINT_COST && styles.disabledHintButton]}
+                onPress={useRevealHint}
+                disabled={gold < REVEAL_HINT_COST || isUsingHelp}
+              >
+                <Text style={styles.hintButtonText}>Sayı Göster · {REVEAL_HINT_COST}</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.hintButton, gold < ELIMINATE_HINT_COST && styles.disabledHintButton]}
+                onPress={useEliminateHint}
+                disabled={gold < ELIMINATE_HINT_COST || isUsingHelp}
+              >
+                <Text style={styles.hintButtonText}>Sayı Sil · {ELIMINATE_HINT_COST}</Text>
+              </Pressable>
+            </View>
+          </View>
           <View style={styles.digitInputs}>
             {input.map((value, index) => (
               <View key={index} style={styles.digitBox}>
@@ -175,12 +271,22 @@ export default function GameScreen({
             {['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].map((key) => (
               <Pressable
                 key={key}
-                style={[styles.key, eliminatedDigits.includes(key) && styles.eliminatedKey]}
+                style={[
+                  styles.key,
+                  { backgroundColor: keypadSkin.background, borderColor: keypadSkin.border },
+                  eliminatedDigits.includes(key) && styles.eliminatedKey,
+                ]}
                 onPress={() => enterDigit(key)}
                 onLongPress={() => toggleEliminatedDigit(key)}
                 delayLongPress={300}
               >
-                <Text style={[styles.keyText, eliminatedDigits.includes(key) && styles.eliminatedKeyText]}>
+                <Text
+                  style={[
+                    styles.keyText,
+                    { color: keypadSkin.text },
+                    eliminatedDigits.includes(key) && styles.eliminatedKeyText,
+                  ]}
+                >
                   {key}
                 </Text>
               </Pressable>
@@ -271,6 +377,25 @@ const styles = StyleSheet.create({
   error: { color: '#dc2626', textAlign: 'center' },
   rewardPreview: { color: '#b45309', fontSize: 14, fontWeight: '700', textAlign: 'center', marginTop: -8 },
   keypadHint: { color: '#64748b', fontSize: 12, textAlign: 'center', marginTop: -8 },
+  helpPanel: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    padding: 12,
+    gap: 8,
+  },
+  helpTitle: { color: '#334155', fontSize: 14, fontWeight: '800' },
+  helpButtons: { flexDirection: 'row', gap: 8 },
+  hintButton: {
+    flex: 1,
+    borderRadius: 99,
+    backgroundColor: '#7c3aed',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  disabledHintButton: { backgroundColor: '#cbd5e1' },
+  hintButtonText: { color: '#fff', fontSize: 13, fontWeight: '800' },
   button: { padding: 16, borderRadius: 14, backgroundColor: '#2563eb', alignItems: 'center' },
   buttonText: { color: '#fff', fontSize: 18, fontWeight: '700' },
   winBox: { gap: 12 },

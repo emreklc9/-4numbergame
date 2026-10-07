@@ -1,24 +1,44 @@
-import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useState } from 'react';
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { getGold } from '../game/gold';
 import BrandLogo from '../components/BrandLogo';
+import { useAuth } from '../auth/AuthProvider';
+import { useCustomization } from '../game/CustomizationProvider';
+import { THEMES } from '../game/store';
 
 export default function HomeScreen({
   navigation,
 }: NativeStackScreenProps<RootStackParamList, 'Home'>) {
-  const [gold, setGold] = useState(0);
+  const { gold, store } = useCustomization();
+  const { user, signOut } = useAuth();
+  const theme = THEMES[store?.equipped.theme ?? 'classic'];
+  const [isModePickerVisible, setIsModePickerVisible] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      getGold().then(setGold);
-    }, []),
-  );
+  const startGame = (digits: 3 | 4 | 5) => {
+    setIsModePickerVisible(false);
+    navigation.navigate('Game', { digits });
+  };
+
+  const confirmSignOut = () =>
+    Alert.alert(
+      user?.displayName ?? 'Hesap',
+      user?.isGuest
+        ? 'Misafir hesabından çıkarsan bu hesaba bir daha erişemezsin.'
+        : (user?.email ?? 'Hesabından çıkış yapılsın mı?'),
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        { text: 'Çıkış yap', style: 'destructive', onPress: () => signOut() },
+      ],
+    );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <Pressable style={styles.account} onPress={confirmSignOut}>
+        <Text style={styles.accountText} numberOfLines={1}>
+          {user?.isGuest ? 'Misafir' : (user?.displayName ?? 'Hesap')}
+        </Text>
+      </Pressable>
       <View style={styles.goldBalance}>
         <Text style={styles.goldIcon}>●</Text>
         <Text style={styles.goldAmount}>{gold}</Text>
@@ -26,34 +46,77 @@ export default function HomeScreen({
       </View>
       <View style={styles.hero}>
         <BrandLogo size={76} />
-        <Text style={styles.title}>Sayı Avı</Text>
+        <Text style={[styles.title, { color: theme.text }]}>Sayı Avı</Text>
         <Text style={styles.subtitle}>
           Gizli sayıyı en az tahminle bul. Her işaret seni doğru cevaba yaklaştırır.
         </Text>
       </View>
       <View style={styles.actions}>
-        <Pressable style={styles.button} onPress={() => navigation.navigate('Mode')}>
-          <Text style={styles.buttonText}>Tek Oyna</Text>
-          <Text style={styles.buttonHint}>Bilgisayara karşı oyna</Text>
-        </Pressable>
-        <View style={[styles.button, styles.disabledButton]}>
-          <View style={styles.comingSoon}>
-            <Text style={styles.comingSoonText}>YAKINDA</Text>
+        <View style={styles.gameActions}>
+          <Pressable
+            style={[styles.gameAction, { backgroundColor: theme.primary }]}
+            onPress={() => setIsModePickerVisible(true)}
+          >
+            <Text style={styles.gameIcon}>▶</Text>
+            <Text style={styles.buttonText}>Tek Oyna</Text>
+            <Text style={styles.buttonHint}>Bilgisayara karşı</Text>
+          </Pressable>
+          <View style={[styles.gameAction, styles.disabledButton]}>
+            <View style={styles.comingSoon}>
+              <Text style={styles.comingSoonText}>YAKINDA</Text>
+            </View>
+            <Text style={styles.gameIcon}>⚔</Text>
+            <Text style={styles.disabledButtonText}>PvP</Text>
+            <Text style={styles.disabledHint}>Arkadaşınla oyna</Text>
           </View>
-          <Text style={styles.disabledButtonText}>PvP</Text>
-          <Text style={styles.disabledHint}>Arkadaşlarınla mücadele et</Text>
         </View>
-        <Pressable style={styles.recordsButton} onPress={() => navigation.navigate('Records')}>
-          <Text style={styles.recordsButtonText}>Rekorlar</Text>
-          <Text style={styles.recordsArrow}>›</Text>
-        </Pressable>
       </View>
+      <Modal
+        visible={isModePickerVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsModePickerVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setIsModePickerVisible(false)}
+          />
+          <View style={styles.modeModal}>
+            <Text style={styles.modalTitle}>Oyun modunu seç</Text>
+            <Text style={styles.modalSubtitle}>Her sayıdaki rakamlar birbirinden farklıdır.</Text>
+            <View style={styles.modeChoices}>
+              {[3, 4, 5].map((digits) => (
+                <Pressable
+                  key={digits}
+                  style={[styles.modeButton, { borderColor: theme.primary }]}
+                  onPress={() => startGame(digits as 3 | 4 | 5)}
+                >
+                  <Text style={[styles.modeButtonNumber, { color: theme.primary }]}>{digits}</Text>
+                  <Text style={styles.modeButtonText}>Basamak</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc', padding: 24, justifyContent: 'center' },
+  account: {
+    position: 'absolute',
+    top: 56,
+    left: 24,
+    maxWidth: 150,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 99,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  accountText: { color: '#334155', fontSize: 14, fontWeight: '700' },
   goldBalance: {
     position: 'absolute',
     top: 56,
@@ -75,25 +138,19 @@ const styles = StyleSheet.create({
   title: { fontSize: 38, fontWeight: '800', color: '#0f172a', marginTop: 20 },
   subtitle: { fontSize: 16, lineHeight: 24, color: '#64748b', textAlign: 'center', marginTop: 10 },
   actions: { gap: 14 },
-  button: {
-    width: '100%',
-    minHeight: 92,
-    padding: 18,
+  gameActions: { flexDirection: 'row', gap: 12 },
+  gameAction: {
+    flex: 1,
+    minHeight: 144,
+    padding: 16,
     borderRadius: 20,
-    backgroundColor: '#2563eb',
     justifyContent: 'center',
-    shadowColor: '#1d4ed8',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
   },
+  gameIcon: { color: '#fff', fontSize: 28, fontWeight: '800', marginBottom: 10 },
   buttonText: { color: '#fff', fontSize: 22, fontWeight: '800' },
   buttonHint: { color: '#dbeafe', fontSize: 14, marginTop: 4 },
   disabledButton: {
     backgroundColor: '#e2e8f0',
-    shadowOpacity: 0,
-    elevation: 0,
   },
   disabledButtonText: { color: '#64748b', fontSize: 22, fontWeight: '800' },
   disabledHint: { color: '#94a3b8', fontSize: 14, marginTop: 4 },
@@ -107,16 +164,33 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   comingSoonText: { color: '#475569', fontSize: 10, fontWeight: '800', letterSpacing: 0.6 },
-  recordsButton: {
-    minHeight: 56,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 16,
-    paddingHorizontal: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  recordsButtonText: { color: '#334155', fontSize: 17, fontWeight: '700' },
   recordsArrow: { color: '#64748b', fontSize: 30, lineHeight: 30 },
+  modalOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    padding: 24,
+  },
+  modeModal: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#fff',
+    borderRadius: 28,
+    padding: 24,
+    gap: 12,
+  },
+  modalTitle: { color: '#0f172a', fontSize: 24, fontWeight: '800' },
+  modalSubtitle: { color: '#64748b', fontSize: 14, marginBottom: 8 },
+  modeChoices: { flexDirection: 'row', gap: 10 },
+  modeButton: {
+    flex: 1,
+    aspectRatio: 1,
+    borderWidth: 1.5,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modeButtonNumber: { fontSize: 30, fontWeight: '800' },
+  modeButtonText: { color: '#1e293b', fontSize: 12, fontWeight: '700', marginTop: 2 },
 });

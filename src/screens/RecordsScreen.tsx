@@ -2,9 +2,13 @@ import { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getRecords, type GameRecord } from '../game/records';
+import { useCustomization } from '../game/CustomizationProvider';
+import { THEMES } from '../game/store';
 
 export default function RecordsScreen() {
   const [records, setRecords] = useState<GameRecord[]>([]);
+  const { store } = useCustomization();
+  const theme = THEMES[store?.equipped.theme ?? 'classic'];
 
   useFocusEffect(
     useCallback(() => {
@@ -13,16 +17,16 @@ export default function RecordsScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <FlatList
         data={records}
         keyExtractor={(item) => item.date}
-        ListEmptyComponent={<Text style={styles.empty}>Henüz rekor yok</Text>}
+        ListEmptyComponent={<Text style={[styles.empty, { color: theme.text }]}>Henüz rekor yok</Text>}
         renderItem={({ item, index }) => (
           <View style={styles.row}>
             <Text style={styles.rank}>{index + 1}.</Text>
             <Text style={styles.mode}>{item.digits} basamak</Text>
-            <Text style={styles.attempts}>{item.attempts} tahmin</Text>
+            <Text style={[styles.attempts, { color: theme.text }]}>{item.attempts} tahmin</Text>
             <Text style={styles.date}>{new Date(item.date).toLocaleDateString('tr-TR')}</Text>
           </View>
         )}
