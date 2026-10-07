@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
@@ -8,6 +9,8 @@ import { useAuth } from '../auth/AuthProvider';
 import { useCustomization } from '../game/CustomizationProvider';
 import { THEMES } from '../game/store';
 
+const TUTORIAL_KEY = 'tutorial.seen';
+
 export default function HomeScreen({
   navigation,
 }: NativeStackScreenProps<RootStackParamList, 'Home'>) {
@@ -15,6 +18,15 @@ export default function HomeScreen({
   const { user } = useAuth();
   const theme = THEMES[store?.equipped.theme ?? 'classic'];
   const [isModePickerVisible, setIsModePickerVisible] = useState(false);
+
+  // Kurallar ilk açılışta bir kez gösterilir.
+  useEffect(() => {
+    AsyncStorage.getItem(TUTORIAL_KEY).then((seen) => {
+      if (seen) return;
+      AsyncStorage.setItem(TUTORIAL_KEY, '1');
+      navigation.navigate('HowToPlay', { firstRun: true });
+    });
+  }, [navigation]);
 
   const startGame = (digits: 3 | 4 | 5) => {
     setIsModePickerVisible(false);
@@ -60,6 +72,9 @@ export default function HomeScreen({
             <Text style={styles.disabledHint}>Arkadaşınla oyna</Text>
           </View>
         </View>
+        <Pressable style={styles.howTo} onPress={() => navigation.navigate('HowToPlay')}>
+          <Text style={[styles.howToText, { color: theme.primary }]}>❓ Nasıl oynanır?</Text>
+        </Pressable>
       </View>
       <Modal
         visible={isModePickerVisible}
@@ -110,6 +125,8 @@ const styles = StyleSheet.create({
     paddingRight: 12,
     paddingVertical: 6,
   },
+  howTo: { alignItems: 'center', paddingVertical: 14 },
+  howToText: { fontSize: 15, fontWeight: '800' },
   accountText: { flexShrink: 1, color: '#334155', fontSize: 14, fontWeight: '700' },
   goldBalance: {
     position: 'absolute',

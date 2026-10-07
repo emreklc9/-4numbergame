@@ -13,6 +13,7 @@ import StoreScreen from './src/screens/StoreScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import { AuthProvider, useAuth } from './src/auth/AuthProvider';
 import { CustomizationProvider, useCustomization } from './src/game/CustomizationProvider';
+import HowToPlayScreen from './src/screens/HowToPlayScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import { THEMES } from './src/game/store';
 
@@ -20,6 +21,7 @@ export type RootStackParamList = {
   Home: undefined;
   Game: { digits: 3 | 4 | 5 };
   Profile: undefined;
+  HowToPlay: { firstRun?: boolean } | undefined;
 };
 
 type TabParamList = {
@@ -147,6 +149,7 @@ function HomeStackNavigator() {
         options={{ title: 'Tahmin Et', animation: 'fade', animationDuration: 250 }}
       />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profil' }} />
+      <Stack.Screen name="HowToPlay" component={HowToPlayScreen} options={{ title: 'Nasıl Oynanır' }} />
     </Stack.Navigator>
   );
 }
