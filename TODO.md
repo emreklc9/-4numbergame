@@ -51,8 +51,9 @@
 
 ### P2 — Veriyi buluta taşıma
 
-- [ ] Oyunu `POST /games` ve `POST /games/:id/guesses` üzerinden oyna; rekorları `/records` ve `/leaderboard` ile göster.
-- [ ] Altın ipuçları (rakam açma, eleme) için sunucu tarafı karşılık ekle.
+- [x] Oyunu `POST /games` ve `POST /games/:id/guesses` üzerinden oyna. Sunucuya ulaşılamazsa çevrimdışı oynanır; rekorlar cihazdaki outbox'ta birikir ve `POST /records/offline` ile "doğrulanmamış" olarak toplu gönderilir.
+- [ ] Rekorlar ekranında `/records` ve `/leaderboard` verilerini göster (doğrulanmamış rekorları ayırt et).
+- [ ] Altın bakiyesini sunucuya taşı. İpuçları sunucudan alınıyor (`/games/:id/hints`, oyun başına en fazla 12) ama maliyet hâlâ istemcide düşüyor; altın sunucuya geçene kadar ipucu hakkı sınırı tek koruma.
 - [ ] Şu an `AsyncStorage` kullanan altın, rekor ve mağaza verilerinin sahipliğini kullanıcı hesabıyla ilişkilendir.
 - [ ] Yerel veriyi ilk girişte sunucuya aktarma ve eşitleme kurallarını belirle; tekrar denemelerde çift kayıt/çift ödül oluşmasını engelle.
 - [ ] Oyun rekorlarını sunucuya kaydet ve kullanıcının rekorlarını API'den getir.

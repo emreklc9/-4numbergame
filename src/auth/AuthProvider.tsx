@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { ApiError, authApi, type AuthUser, type Session } from './api';
+import { flushOutbox } from '../game/outbox';
 
 const TOKEN_KEY = 'auth.token';
 const USER_KEY = 'auth.user';
@@ -10,6 +11,7 @@ type AuthStatus = 'loading' | 'signedOut' | 'signedIn';
 type AuthContextValue = {
   status: AuthStatus;
   user: AuthUser | null;
+  token: string | null;
   signInAsGuest: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   registerWithEmail: (email: string, password: string) => Promise<void>;
@@ -60,10 +62,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, [persist, clear]);
 
+  // Çevrimdışı biriken rekorlar oturum açıldığında sunucuya gönderilir.
+  useEffect(() => {
+    if (token) flushOutbox(token);
+  }, [token]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
       user,
+      token,
       signInAsGuest: async () => persist(await authApi.guest()),
       signInWithEmail: async (email, password) => persist(await authApi.login(email, password)),
       registerWithEmail: async (email, password) =>

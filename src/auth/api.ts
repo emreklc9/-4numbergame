@@ -20,9 +20,12 @@ export class ApiError extends Error {
 
 const TIMEOUT_MS = 10_000;
 
-async function request<T>(path: string, init: { method?: string; body?: unknown; token?: string }): Promise<T> {
+export async function request<T>(
+  path: string,
+  init: { method?: string; body?: unknown; token?: string; timeoutMs?: number },
+): Promise<T> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), init.timeoutMs ?? TIMEOUT_MS);
   try {
     const response = await fetch(`${API_URL}${path}`, {
       method: init.method ?? 'GET',

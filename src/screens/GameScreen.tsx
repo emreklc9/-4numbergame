@@ -17,6 +17,10 @@ import {
   type Feedback,
 } from '../game/logic';
 import { addRecord } from '../game/records';
+import { enqueueRecord, flushOutbox } from '../game/outbox';
+import { gameApi } from '../game/serverGame';
+import { ApiError } from '../auth/api';
+import { useAuth } from '../auth/AuthProvider';
 import LoadingScreen from '../components/LoadingScreen';
 import ConfettiBurst from '../components/ConfettiBurst';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -44,6 +48,10 @@ export default function GameScreen({
   const [eliminatedDigits, setEliminatedDigits] = useState<string[]>([]);
   const [isUsingHelp, setIsUsingHelp] = useState(false);
   const helpRequestInFlight = useRef(false);
+  const [serverGameId, setServerGameId] = useState<string | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { token } = useAuth();
   const { gold, store, earnGold, spendGold } = useCustomization();
   const theme = THEMES[store?.equipped.theme ?? 'classic'];
   const keypadSkin = KEYPAD_SKINS[store?.equipped.keypad ?? 'classic'];
@@ -56,6 +64,25 @@ export default function GameScreen({
     const timeout = setTimeout(() => setIsLoading(false), 700);
     return () => clearTimeout(timeout);
   }, []);
+
+  // Sunucuda oyun açılabiliyorsa tahminler sunucuda doğrulanır; açılamazsa yerel (çevrimdışı) oyun oynanır.
+  const openServerGame = useCallback(async () => {
+    setSessionReady(false);
+    try {
+      const game = token ? await gameApi.create(token, digits) : null;
+      setServerGameId(game?.id ?? null);
+    } catch {
+      setServerGameId(null);
+    } finally {
+      setSessionReady(true);
+    }
+  }, [token, digits]);
+
+  useEffect(() => {
+    openServerGame();
+  }, [openServerGame]);
+
+  const isOffline = sessionReady && serverGameId === null;
 
   useFocusEffect(
     useCallback(() => {
@@ -74,7 +101,19 @@ export default function GameScreen({
     }, [navigation, theme.background]),
   );
 
-  const submit = () => {
+  const applyResult = (guess: string, feedback: Feedback, attemptCount: number) => {
+    setAttempts((current) => [{ guess, feedback }, ...current]);
+    setInput((current) => current.map((value, index) => (lockedDigits[index] ? value : '')));
+    const firstUnlockedIndex = lockedDigits.findIndex((locked) => !locked);
+    setActiveIndex(firstUnlockedIndex === -1 ? 0 : firstUnlockedIndex);
+    if (feedback.plus === digits) {
+      addRecord(attemptCount, digits);
+      earnGold(Math.max(20 - (attemptCount - 1), 1));
+    }
+  };
+
+  const submit = async () => {
+    if (isSubmitting) return;
     const guess = input.join('');
     const message = validateGuess(guess, digits);
     if (message) {
@@ -82,14 +121,38 @@ export default function GameScreen({
       return;
     }
     setError(null);
+
+    if (serverGameId && token) {
+      setIsSubmitting(true);
+      try {
+        const result = await gameApi.guess(token, serverGameId, guess);
+        applyResult(guess, result.feedback, result.attempts);
+        if (result.status === 'lost') {
+          // Bitmiş sunucu oyunu üzerinde devam edilemez; yeni oyun açılır.
+          restart();
+          setError(`Deneme sınırına ulaştın. Sayı: ${result.secret}`);
+        }
+      } catch (caught) {
+        setError(
+          caught instanceof ApiError && caught.status === 0
+            ? 'Bağlantı koptu. Tekrar dene.'
+            : caught instanceof Error
+              ? caught.message
+              : 'Tahmin gönderilemedi',
+        );
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     const feedback = evaluateGuess(secret, guess);
-    setAttempts([{ guess, feedback }, ...attempts]);
-    setInput((current) => current.map((value, index) => (lockedDigits[index] ? value : '')));
-    const firstUnlockedIndex = lockedDigits.findIndex((locked) => !locked);
-    setActiveIndex(firstUnlockedIndex === -1 ? 0 : firstUnlockedIndex);
+    applyResult(guess, feedback, attempts.length + 1);
     if (feedback.plus === digits) {
-      addRecord(attempts.length + 1, digits);
-      earnGold(nextReward);
+      // Çevrimdışı rekor cihazda biriktirilir; bağlantı olunca doğrulanmamış olarak toplu gönderilir.
+      enqueueRecord(attempts.length + 1, digits).then(() => {
+        if (token) flushOutbox(token);
+      });
     }
   };
 
@@ -140,9 +203,21 @@ export default function GameScreen({
     setIsUsingHelp(true);
     try {
       await spendGold(REVEAL_HINT_COST);
-      const hintIndex = availableIndexes[Math.floor(Math.random() * availableIndexes.length)];
+      let hintIndex = availableIndexes[Math.floor(Math.random() * availableIndexes.length)];
+      let hintDigit = secret[hintIndex];
+      if (serverGameId && token) {
+        try {
+          const hint = await gameApi.hint(token, serverGameId, 'reveal');
+          if (hint.type !== 'reveal') throw new Error('Beklenmeyen ipucu yanıtı');
+          hintIndex = hint.index;
+          hintDigit = hint.digit;
+        } catch (hintError) {
+          await earnGold(REVEAL_HINT_COST);
+          throw hintError;
+        }
+      }
       setInput((current) =>
-        current.map((value, index) => (index === hintIndex ? secret[index] : value)),
+        current.map((value, index) => (index === hintIndex ? hintDigit : value)),
       );
       setLockedDigits((current) =>
         current.map((locked, index) => (index === hintIndex ? true : locked)),
@@ -172,8 +247,18 @@ export default function GameScreen({
     setIsUsingHelp(true);
     try {
       await spendGold(ELIMINATE_HINT_COST);
-      const digit = candidates[Math.floor(Math.random() * candidates.length)];
-      setEliminatedDigits((current) => [...current, digit]);
+      let digit = candidates[Math.floor(Math.random() * candidates.length)];
+      if (serverGameId && token) {
+        try {
+          const hint = await gameApi.hint(token, serverGameId, 'eliminate');
+          if (hint.type !== 'eliminate') throw new Error('Beklenmeyen ipucu yanıtı');
+          digit = hint.digit;
+        } catch (hintError) {
+          await earnGold(ELIMINATE_HINT_COST);
+          throw hintError;
+        }
+      }
+      setEliminatedDigits((current) => (current.includes(digit) ? current : [...current, digit]));
       setError(null);
     } catch (hintError) {
       setError(hintError instanceof Error ? hintError.message : 'İpucu kullanılamadı');
@@ -191,9 +276,10 @@ export default function GameScreen({
     setActiveIndex(0);
     setEliminatedDigits([]);
     setError(null);
+    openServerGame();
   };
 
-  if (isLoading) {
+  if (isLoading || !sessionReady) {
     return <LoadingScreen message={`${digits} basamaklı oyun hazırlanıyor`} />;
   }
 
@@ -220,6 +306,9 @@ export default function GameScreen({
       ) : (
         <>
           <Text style={styles.instruction}>{digits} basamaklı tahminini gir</Text>
+          {isOffline && (
+            <Text style={styles.offlineNote}>Çevrimdışı mod · rekorun bağlantı gelince gönderilecek</Text>
+          )}
           <Text style={styles.rewardPreview}>Bu turu kazanırsan {nextReward} altın</Text>
           <Text style={styles.keypadHint}>Olmayan bir rakamı işaretlemek için tuşa basılı tut</Text>
           <View style={styles.helpPanel}>
@@ -293,7 +382,7 @@ export default function GameScreen({
             ))}
           </View>
           {error && <Text style={styles.error}>{error}</Text>}
-          <Pressable style={styles.button} onPress={submit}>
+          <Pressable style={[styles.button, isSubmitting && { opacity: 0.6 }]} onPress={submit} disabled={isSubmitting}>
             <Text style={styles.buttonText}>Tahmin Et</Text>
           </Pressable>
         </>
@@ -315,6 +404,7 @@ export default function GameScreen({
 }
 
 const styles = StyleSheet.create({
+  offlineNote: { color: '#b45309', fontSize: 12, fontWeight: '700', textAlign: 'center' },
   container: { flex: 1, padding: 24, gap: 14, backgroundColor: '#f8fafc' },
   goldBalance: {
     alignSelf: 'flex-end',
