@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useCustomization } from '../game/CustomizationProvider';
 import { STORE_ITEMS, THEMES, type StoreItem } from '../game/store';
 
@@ -10,9 +11,15 @@ const categories: Array<{ title: string; types: StoreItem['type'][] }> = [
 ];
 
 export default function StoreScreen() {
-  const { gold, store, purchase, equip } = useCustomization();
+  const { gold, store, online, refresh, purchase, equip } = useCustomization();
   const [message, setMessage] = useState<string | null>(null);
   const theme = THEMES[store?.equipped.theme ?? 'classic'];
+
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh]),
+  );
 
   const handleItem = async (item: StoreItem) => {
     try {
@@ -37,6 +44,11 @@ export default function StoreScreen() {
         <Text style={styles.balanceAmount}>{gold} Altın</Text>
       </View>
       <Text style={styles.intro}>Stilini seç, zaferini kişiselleştir.</Text>
+      {!online && (
+        <Text style={styles.offlineNotice}>
+          Çevrimdışısın. Satın alma için internet gerekli; sahip olduklarını kullanabilirsin.
+        </Text>
+      )}
       {message && <Text style={styles.message}>{message}</Text>}
       {categories.map((category) => (
         <View key={category.title} style={styles.category}>
@@ -51,9 +63,13 @@ export default function StoreScreen() {
                   <Text style={styles.itemDescription}>{item.description}</Text>
                 </View>
                 <Pressable
-                  style={[styles.itemButton, equipped && styles.equippedButton]}
+                  style={[
+                    styles.itemButton,
+                    equipped && styles.equippedButton,
+                    !owned && !online && styles.disabledButton,
+                  ]}
                   onPress={() => handleItem(item)}
-                  disabled={equipped}
+                  disabled={equipped || (!owned && !online)}
                 >
                   <Text style={styles.itemButtonText}>
                     {equipped ? 'Takılı' : owned ? 'Kullan' : `${item.price} Altın`}
@@ -80,6 +96,7 @@ const styles = StyleSheet.create({
   balanceLabel: { color: '#92400e', fontSize: 12, fontWeight: '800', letterSpacing: 0.8 },
   balanceAmount: { color: '#b45309', fontSize: 28, fontWeight: '800', marginTop: 4 },
   intro: { color: '#64748b', fontSize: 15, marginTop: -12 },
+  offlineNotice: { color: '#b45309', fontWeight: '600', textAlign: 'center' },
   message: { color: '#047857', fontWeight: '700', textAlign: 'center' },
   category: { gap: 10 },
   categoryTitle: { color: '#0f172a', fontSize: 20, fontWeight: '800' },
@@ -98,5 +115,6 @@ const styles = StyleSheet.create({
   itemDescription: { color: '#64748b', fontSize: 13, lineHeight: 18, marginTop: 3 },
   itemButton: { backgroundColor: '#2563eb', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 10 },
   equippedButton: { backgroundColor: '#16a34a' },
+  disabledButton: { backgroundColor: '#94a3b8' },
   itemButtonText: { color: '#fff', fontSize: 12, fontWeight: '800' },
 });

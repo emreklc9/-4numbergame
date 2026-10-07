@@ -6,8 +6,8 @@
 - Tek oyunculu sayı tahmin oyunu; 3, 4 ve 5 basamaklı modlar var.
 - Oyun akışı, tahmin kontrolü ve ipuçları `src/game/logic.ts` ve `src/screens/GameScreen.tsx` içinde.
 - Ana ekran, mağaza ve rekorlar ekranı mevcut. PvP ekranda henüz kullanılamıyor.
-- Altın, kozmetik mağazası ve en fazla 20 rekor `AsyncStorage` içinde cihazda saklanıyor.
-- Giriş ekranı (misafir ve e-posta/şifre) var; oturum `expo-secure-store` ile saklanıyor. Oyun, altın, mağaza ve rekorlar hâlâ cihazda; sunucuya bağlı değil.
+- Giriş ekranı (misafir ve e-posta/şifre) var; oturum `expo-secure-store` ile saklanıyor.
+- Oyun, altın, mağaza ve rekorlar sunucuda (hesaba bağlı). Çevrimdışıyken oyun, rekor ve altın kazanma/harcama cihazda `outbox` içinde birikir; mağazadan satın alma yalnızca çevrimiçiyken yapılır.
 - Ayrı bir NestJS + PostgreSQL backend var (`+4nubergamebackend`): misafir/e-posta/Google girişi, sunucu taraflı oyun doğrulama (`/games`), rekorlar ve liderlik tablosu.
 - Navigasyonda React Navigation kullanılıyor. `AGENTS.md` ise Expo Router kullanımını tarif ediyor; yeni ekranlar eklenmeden önce bu tercih netleştirilmeli, sırf bu yüzden mevcut navigasyon hemen taşınmamalı.
 - `app.json`, iOS, Android ve web yapılandırması içeriyor; Android/iOS için gerçek cihaz testi ve mağaza dağıtımı ayrıca yapılmalı.
@@ -36,7 +36,7 @@
 
 - [x] NestJS API projesini ayrı bir uygulama olarak kur; yapılandırma ve sırları ortam değişkenlerinden yükle. (Ayrı depo: `-4numbergamebackend`)
 - [ ] PostgreSQL için migration akışını ve yedekleme yaklaşımını kur. (Bağlantı ve yerel veritabanı hazır; `synchronize` yalnızca geliştirmede açık.)
-- [ ] Veri modelini tamamla: kullanıcılar, oyunlar ve rekorlar hazır; altın işlem defteri ve kozmetik envanteri eksik.
+- [ ] Veri modelini tamamla: kullanıcılar, oyunlar ve rekorlar hazır; altın işlem defteri ve mağaza envanteri de hazır.
 - [x] DTO doğrulaması, API sürümleme (`/v1`) ve sağlık kontrolü uç noktası ekle.
 - [ ] Denetim izi ve loglama gereksinimlerini tanımla. (Rate limit ve helmet hazır; CORS hâlâ tamamen açık, üretimden önce kısıtlanmalı.)
 
@@ -52,14 +52,14 @@
 ### P2 — Veriyi buluta taşıma
 
 - [x] Oyunu `POST /games` ve `POST /games/:id/guesses` üzerinden oyna. Sunucuya ulaşılamazsa çevrimdışı oynanır; rekorlar cihazdaki outbox'ta birikir ve `POST /records/offline` ile "doğrulanmamış" olarak toplu gönderilir.
-- [ ] Rekorlar ekranında `/records` ve `/leaderboard` verilerini göster (doğrulanmamış rekorları ayırt et).
-- [ ] Altın bakiyesini sunucuya taşı. İpuçları sunucudan alınıyor (`/games/:id/hints`, oyun başına en fazla 12) ama maliyet hâlâ istemcide düşüyor; altın sunucuya geçene kadar ipucu hakkı sınırı tek koruma.
-- [ ] Şu an `AsyncStorage` kullanan altın, rekor ve mağaza verilerinin sahipliğini kullanıcı hesabıyla ilişkilendir.
-- [ ] Yerel veriyi ilk girişte sunucuya aktarma ve eşitleme kurallarını belirle; tekrar denemelerde çift kayıt/çift ödül oluşmasını engelle.
-- [ ] Oyun rekorlarını sunucuya kaydet ve kullanıcının rekorlarını API'den getir.
-- [ ] Altın kazanma/harcama hareketlerini sunucuda atomik işlem olarak uygula; istemci bakiyesini tek doğruluk kaynağı yapma.
-- [ ] Kozmetik satın alma ve donatma durumunu hesaplar arasında eşitle.
-- [ ] Ağ yokken oynama, bekleyen işlemleri yeniden gönderme ve çakışma çözümü davranışlarını tanımla.
+- [x] Rekorlar ekranında `/records` ve `/leaderboard` verilerini göster (doğrulanmamış rekorları ayırt et).
+- [x] Altın bakiyesini sunucuya taşı. Kazanç ve ipucu maliyeti sunucuda atomik düşer; çevrimdışı kazanç günde en fazla 200 altınla sınırlı.
+- [x] Altın, rekor ve mağaza verilerinin sahipliğini kullanıcı hesabıyla ilişkilendir. (Eski cihaz içi altın/rekorlar aktarılmadı.)
+- [x] Tekrar denemelerde çift kayıt/çift ödül oluşmasını engelle (`clientId` + işlem defterinde tekil `ref`).
+- [x] Oyun rekorlarını sunucuya kaydet ve kullanıcının rekorlarını API'den getir.
+- [x] Altın kazanma/harcama hareketlerini sunucuda atomik işlem olarak uygula (`gold_transactions`).
+- [x] Mağaza satın alma (yalnızca çevrimiçi) ve donatma durumunu hesaplar arasında eşitle.
+- [ ] Çevrimdışı kazanılan altının ve rekorların kötüye kullanımına karşı ek kurallar (ör. cihaz başına sınır) değerlendir.
 
 ### P2 — Mobil ekranlar ve hata durumları
 

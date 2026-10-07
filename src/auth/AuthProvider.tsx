@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { ApiError, authApi, type AuthUser, type Session } from './api';
-import { flushOutbox } from '../game/outbox';
 
 const TOKEN_KEY = 'auth.token';
 const USER_KEY = 'auth.user';
@@ -61,11 +60,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })();
   }, [persist, clear]);
-
-  // Çevrimdışı biriken rekorlar oturum açıldığında sunucuya gönderilir.
-  useEffect(() => {
-    if (token) flushOutbox(token);
-  }, [token]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

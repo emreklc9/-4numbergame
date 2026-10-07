@@ -1,8 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { spendGold } from './gold';
-
-const KEY = 'store';
-
 export type ThemeId = 'classic' | 'midnight' | 'sunset';
 export type KeypadSkinId = 'classic' | 'mint' | 'violet';
 export type WinEffectId = 'confetti' | 'golden' | 'neon';
@@ -130,54 +125,10 @@ export const WIN_EFFECTS = {
   neon: ['#22d3ee', '#a3e635', '#f472b6', '#c084fc', '#facc15'],
 } satisfies Record<WinEffectId, string[]>;
 
-const defaultState: StoreState = {
+export const defaultStoreState: StoreState = {
   ownedItems: ['theme-classic', 'keypad-classic', 'effect-confetti'],
   equipped: { theme: 'classic', keypad: 'classic', effect: 'confetti' },
 };
 
-export async function getStoreState(): Promise<StoreState> {
-  const raw = await AsyncStorage.getItem(KEY);
-  if (raw === null) return defaultState;
-
-  const stored = JSON.parse(raw) as StoreState;
-  return {
-    ownedItems: [...new Set([...defaultState.ownedItems, ...stored.ownedItems])],
-    equipped: { ...defaultState.equipped, ...stored.equipped },
-  };
-}
-
-async function saveStoreState(state: StoreState): Promise<StoreState> {
-  await AsyncStorage.setItem(KEY, JSON.stringify(state));
-  return state;
-}
-
-export async function purchaseItem(itemId: StoreItemId): Promise<StoreState> {
-  const item = STORE_ITEMS.find((candidate) => candidate.id === itemId);
-  if (!item) throw new Error('Mağaza ürünü bulunamadı');
-
-  const current = await getStoreState();
-  if (current.ownedItems.includes(item.id)) {
-    throw new Error('Bu ürüne zaten sahipsin');
-  }
-
-  await spendGold(item.price);
-  const next: StoreState = { ...current, ownedItems: [...current.ownedItems, item.id] };
-  return saveStoreState(next);
-}
-
-export async function equipItem(itemId: StoreItemId): Promise<StoreState> {
-  const item = STORE_ITEMS.find((candidate) => candidate.id === itemId);
-  if (!item) {
-    throw new Error('Bu ürün donatılamaz');
-  }
-
-  const current = await getStoreState();
-  if (!current.ownedItems.includes(item.id)) {
-    throw new Error('Bu ürüne sahip değilsin');
-  }
-
-  return saveStoreState({
-    ...current,
-    equipped: { ...current.equipped, [item.type]: item.value },
-  });
-}
+export const findEquippedItemId = (type: StoreItem['type'], value: string) =>
+  STORE_ITEMS.find((item) => item.type === type && item.value === value)?.id;

@@ -7,11 +7,13 @@ export type GuessResult = {
   status: 'active' | 'won' | 'lost';
   attempts: number;
   feedback: Feedback;
+  gold: number;
+  goldEarned: number;
   secret?: string;
 };
 export type HintResult =
-  | { type: 'reveal'; index: number; digit: string }
-  | { type: 'eliminate'; digit: string };
+  | { type: 'reveal'; index: number; digit: string; gold: number }
+  | { type: 'eliminate'; digit: string; gold: number };
 
 // Oyun açma kısa zaman aşımıyla denenir; sunucuya ulaşılamazsa çevrimdışı moda geçilir.
 const CREATE_TIMEOUT_MS = 4_000;
