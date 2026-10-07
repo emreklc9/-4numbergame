@@ -20,6 +20,7 @@ export default function LoginScreen() {
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -38,8 +39,12 @@ export default function LoginScreen() {
 
   const submit = () => {
     const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail || password.length < 8) {
-      setError('Geçerli bir e-posta ve en az 8 karakterli şifre gir');
+    if (!normalizedEmail || password.length < 6) {
+      setError('Geçerli bir e-posta ve en az 6 karakterli şifre gir');
+      return;
+    }
+    if (mode === 'register' && password !== confirm) {
+      setError('Şifreler eşleşmiyor');
       return;
     }
     run(() =>
@@ -87,15 +92,28 @@ export default function LoginScreen() {
         />
         <TextInput
           style={styles.input}
-          placeholder="Şifre (en az 8 karakter)"
+          placeholder={mode === 'register' ? 'Şifre (en az 6 karakter)' : 'Şifre'}
           secureTextEntry
           autoCapitalize="none"
           autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
           value={password}
           onChangeText={setPassword}
           editable={!busy}
-          onSubmitEditing={submit}
+          onSubmitEditing={mode === 'login' ? submit : undefined}
         />
+        {mode === 'register' && (
+          <TextInput
+            style={styles.input}
+            placeholder="Şifre (tekrar)"
+            secureTextEntry
+            autoCapitalize="none"
+            autoComplete="new-password"
+            value={confirm}
+            onChangeText={setConfirm}
+            editable={!busy}
+            onSubmitEditing={submit}
+          />
+        )}
         {error && <Text style={styles.error}>{error}</Text>}
 
         <Pressable style={[styles.secondaryButton, busy && styles.disabled]} onPress={submit} disabled={busy}>
@@ -109,6 +127,7 @@ export default function LoginScreen() {
         <Pressable
           onPress={() => {
             setMode(mode === 'login' ? 'register' : 'login');
+            setConfirm('');
             setError(null);
           }}
           disabled={busy}

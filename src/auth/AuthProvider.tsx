@@ -17,6 +17,7 @@ type AuthContextValue = {
   registerWithEmail: (email: string, password: string) => Promise<void>;
   signInWithGoogle: (idToken: string) => Promise<void>;
   updateProfile: (changes: { displayName?: string; avatarId?: string }) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -135,6 +136,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const updated = await authApi.updateProfile(token, changes);
         await SecureStore.setItemAsync(USER_KEY, JSON.stringify(updated));
         setUser(updated);
+      },
+      changePassword: async (currentPassword, newPassword) => {
+        if (!token) throw new Error('Önce giriş yapmalısın');
+        persist(await authApi.changePassword(token, currentPassword, newPassword));
       },
       signOut: async () => {
         // Yenileme anahtarı sunucuda iptal edilir; sunucuya ulaşılamasa da yerel çıkış yapılır.

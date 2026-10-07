@@ -94,6 +94,12 @@ export const authApi = {
     request<AccessSession>('/auth/refresh', { method: 'POST', body: { refreshToken } }),
   logout: (refreshToken: string) =>
     request<unknown>('/auth/logout', { method: 'POST', body: { refreshToken }, timeoutMs: 4_000 }),
+  changePassword: (token: string, currentPassword: string, newPassword: string) =>
+    request<Session>('/auth/password', {
+      method: 'POST',
+      body: { currentPassword, newPassword },
+      token,
+    }),
   me: (token: string) => request<AuthUser>('/auth/me', { token }),
   updateProfile: (token: string, body: { displayName?: string; avatarId?: string }) =>
     request<AuthUser>('/auth/me', { method: 'PATCH', body, token }),

@@ -7,13 +7,20 @@ import Avatar from '../profile/Avatar';
 import { AVATARS } from '../profile/avatars';
 
 export default function ProfileScreen() {
-  const { user, updateProfile, signOut } = useAuth();
+  const { user, updateProfile, changePassword, signOut } = useAuth();
   const { gold, store } = useCustomization();
   const theme = THEMES[store?.equipped.theme ?? 'classic'];
   const [name, setName] = useState(user?.displayName ?? '');
   const [avatarId, setAvatarId] = useState(user?.avatarId ?? AVATARS[0].id);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
+
+  const [pwOpen, setPwOpen] = useState(false);
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [newPw2, setNewPw2] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwMessage, setPwMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
   const trimmed = name.trim();
   const changed = trimmed !== user?.displayName || avatarId !== user?.avatarId;
@@ -29,6 +36,25 @@ export default function ProfileScreen() {
       setMessage({ text: error instanceof Error ? error.message : 'Kaydedilemedi', ok: false });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const savePassword = async () => {
+    if (newPw.length < 6) return setPwMessage({ text: 'Yeni şifre en az 6 karakter olmalı', ok: false });
+    if (newPw !== newPw2) return setPwMessage({ text: 'Yeni şifreler eşleşmiyor', ok: false });
+    setPwBusy(true);
+    setPwMessage(null);
+    try {
+      await changePassword(currentPw, newPw);
+      setCurrentPw('');
+      setNewPw('');
+      setNewPw2('');
+      setPwOpen(false);
+      setPwMessage({ text: 'Şifren değiştirildi', ok: true });
+    } catch (error) {
+      setPwMessage({ text: error instanceof Error ? error.message : 'Değiştirilemedi', ok: false });
+    } finally {
+      setPwBusy(false);
     }
   };
 
@@ -95,6 +121,40 @@ export default function ProfileScreen() {
         </Text>
       </Pressable>
 
+      {!user?.isGuest && (
+        <View style={styles.pwBox}>
+          <Pressable onPress={() => setPwOpen(!pwOpen)}>
+            <Text style={[styles.label, { color: theme.text }]}>
+              🔒 Şifre değiştir {pwOpen ? '▲' : '▼'}
+            </Text>
+          </Pressable>
+          {pwOpen && (
+            <>
+              <TextInput style={styles.input} placeholder="Mevcut şifre" secureTextEntry
+                autoCapitalize="none" autoComplete="current-password" value={currentPw} onChangeText={setCurrentPw} />
+              <TextInput style={styles.input} placeholder="Yeni şifre (en az 6 karakter)" secureTextEntry
+                autoCapitalize="none" autoComplete="new-password" value={newPw} onChangeText={setNewPw} />
+              <TextInput style={styles.input} placeholder="Yeni şifre (tekrar)" secureTextEntry
+                autoCapitalize="none" autoComplete="new-password" value={newPw2} onChangeText={setNewPw2} />
+              <Pressable
+                style={[styles.save, { backgroundColor: theme.primary }, (pwBusy || !currentPw || !newPw) && styles.disabled]}
+                disabled={pwBusy || !currentPw || !newPw}
+                onPress={savePassword}
+              >
+                <Text style={[styles.saveText, { color: theme.primaryText }]}>
+                  {pwBusy ? 'Değiştiriliyor...' : 'Şifreyi değiştir'}
+                </Text>
+              </Pressable>
+            </>
+          )}
+          {pwMessage && (
+            <Text style={[styles.message, { color: pwMessage.ok ? '#047857' : '#dc2626' }]}>
+              {pwMessage.text}
+            </Text>
+          )}
+        </View>
+      )}
+
       <Pressable style={styles.signOut} onPress={confirmSignOut}>
         <Text style={styles.signOutText}>Çıkış yap</Text>
       </Pressable>
@@ -123,6 +183,7 @@ const styles = StyleSheet.create({
   save: { borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 4 },
   saveText: { fontSize: 16, fontWeight: '800' },
   disabled: { opacity: 0.5 },
+  pwBox: { gap: 10, marginTop: 8 },
   signOut: { alignItems: 'center', paddingVertical: 14, marginTop: 16 },
   signOutText: { color: '#dc2626', fontWeight: '800', fontSize: 16 },
 });
