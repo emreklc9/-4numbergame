@@ -72,7 +72,7 @@ export default function StoreScreen() {
                   disabled={equipped || (!owned && !online)}
                 >
                   <Text style={styles.itemButtonText}>
-                    {equipped ? 'Takılı' : owned ? 'Kullan' : `${item.price} Altın`}
+                    {equipped ? 'Seçili' : owned ? 'Kullan' : `${item.price} Altın`}
                   </Text>
                 </Pressable>
               </View>

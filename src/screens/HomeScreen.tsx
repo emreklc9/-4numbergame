@@ -3,6 +3,7 @@ import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import BrandLogo from '../components/BrandLogo';
+import Avatar from '../profile/Avatar';
 import { useAuth } from '../auth/AuthProvider';
 import { useCustomization } from '../game/CustomizationProvider';
 import { THEMES } from '../game/store';
@@ -11,7 +12,7 @@ export default function HomeScreen({
   navigation,
 }: NativeStackScreenProps<RootStackParamList, 'Home'>) {
   const { gold, store } = useCustomization();
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const theme = THEMES[store?.equipped.theme ?? 'classic'];
   const [isModePickerVisible, setIsModePickerVisible] = useState(false);
 
@@ -20,23 +21,12 @@ export default function HomeScreen({
     navigation.navigate('Game', { digits });
   };
 
-  const confirmSignOut = () =>
-    Alert.alert(
-      user?.displayName ?? 'Hesap',
-      user?.isGuest
-        ? 'Misafir hesabından çıkarsan bu hesaba bir daha erişemezsin.'
-        : (user?.email ?? 'Hesabından çıkış yapılsın mı?'),
-      [
-        { text: 'Vazgeç', style: 'cancel' },
-        { text: 'Çıkış yap', style: 'destructive', onPress: () => signOut() },
-      ],
-    );
-
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <Pressable style={styles.account} onPress={confirmSignOut}>
+      <Pressable style={styles.account} onPress={() => navigation.navigate('Profile')}>
+        <Avatar id={user?.avatarId} size={28} />
         <Text style={styles.accountText} numberOfLines={1}>
-          {user?.isGuest ? 'Misafir' : (user?.displayName ?? 'Hesap')}
+          {user?.displayName ?? 'Hesap'}
         </Text>
       </Pressable>
       <View style={styles.goldBalance}>
@@ -113,10 +103,14 @@ const styles = StyleSheet.create({
     maxWidth: 150,
     backgroundColor: '#e2e8f0',
     borderRadius: 99,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 6,
+    paddingRight: 12,
+    paddingVertical: 6,
   },
-  accountText: { color: '#334155', fontSize: 14, fontWeight: '700' },
+  accountText: { flexShrink: 1, color: '#334155', fontSize: 14, fontWeight: '700' },
   goldBalance: {
     position: 'absolute',
     top: 56,

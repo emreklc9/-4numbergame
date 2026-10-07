@@ -18,7 +18,7 @@ export type ServerRecord = {
   date: string;
   verified: boolean;
 };
-export type LeaderboardRow = { rank: number; displayName: string; attempts: number };
+export type LeaderboardRow = { rank: number; displayName: string; avatarId: string; attempts: number };
 
 export const recordsApi = {
   mine: (token: string) => request<ServerRecord[]>('/records', { token }),

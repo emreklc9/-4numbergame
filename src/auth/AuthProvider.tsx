@@ -15,6 +15,7 @@ type AuthContextValue = {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   registerWithEmail: (email: string, password: string) => Promise<void>;
   signInWithGoogle: (idToken: string) => Promise<void>;
+  updateProfile: (changes: { displayName?: string; avatarId?: string }) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -77,6 +78,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ),
       signInWithGoogle: async (idToken) =>
         persist(await authApi.google(idToken, user?.isGuest ? (token ?? undefined) : undefined)),
+      updateProfile: async (changes) => {
+        if (!token) throw new Error('Önce giriş yapmalısın');
+        const updated = await authApi.updateProfile(token, changes);
+        await SecureStore.setItemAsync(USER_KEY, JSON.stringify(updated));
+        setUser(updated);
+      },
       signOut: clear,
     }),
     [status, user, token, persist, clear],

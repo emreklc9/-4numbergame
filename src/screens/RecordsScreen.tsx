@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import Avatar from '../profile/Avatar';
 import { useAuth } from '../auth/AuthProvider';
 import { useCustomization } from '../game/CustomizationProvider';
 import { pendingRecords } from '../game/outbox';
@@ -132,7 +133,10 @@ export default function RecordsScreen() {
             renderItem={({ item }) => (
               <View style={styles.row}>
                 <Text style={styles.rank}>{item.rank}.</Text>
-                <Text style={[styles.attempts, styles.main, { color: theme.text }]}>{item.displayName}</Text>
+                <Avatar id={item.avatarId} size={30} />
+                <Text style={[styles.attempts, styles.main, styles.boardName, { color: theme.text }]}>
+                  {item.displayName}
+                </Text>
                 <Text style={[styles.attempts, { color: theme.text }]}>{item.attempts}</Text>
               </View>
             )}
@@ -160,6 +164,7 @@ const styles = StyleSheet.create({
   rank: { width: 36, fontSize: 18, color: '#777' },
   main: { flex: 1 },
   attempts: { fontSize: 18, fontWeight: '700' },
+  boardName: { marginLeft: 10 },
   badge: { fontSize: 12, color: '#b45309' },
   mode: { fontSize: 14, color: '#555', marginRight: 10 },
   date: { fontSize: 14, color: '#555' },

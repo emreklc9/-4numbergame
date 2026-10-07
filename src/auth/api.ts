@@ -4,6 +4,7 @@ export type AuthUser = {
   id: string;
   email: string | null;
   displayName: string;
+  avatarId: string;
   isGuest: boolean;
 };
 
@@ -66,4 +67,6 @@ export const authApi = {
   upgrade: (token: string, email: string, password: string) =>
     request<Session>('/auth/upgrade', { method: 'POST', body: { email, password }, token }),
   me: (token: string) => request<AuthUser>('/auth/me', { token }),
+  updateProfile: (token: string, body: { displayName?: string; avatarId?: string }) =>
+    request<AuthUser>('/auth/me', { method: 'PATCH', body, token }),
 };
