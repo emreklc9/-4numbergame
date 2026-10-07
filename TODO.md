@@ -46,7 +46,8 @@
 - [ ] E-posta doğrulama ve şifre sıfırlama ekle. (Kayıt ve giriş hazır.)
 - [ ] Mobilde Google Sign-In'i bağla. Backend (`/auth/google`, `/auth/google/link`) hazır. Gerekenler: Android ve iOS OAuth istemcileri, development build, `GOOGLE_CLIENT_ID` listesine yeni kimlikler. Sohbette paylaşılan Client Secret yenilenmeli.
 - [x] Hesap bağlama ve çakışan e-posta durumlarını güvenli biçimde ele al. (Misafir → e-posta/Google dönüşümü hazır.)
-- [ ] Oturum sona ermesi, çıkış ve hesap silme davranışlarını mobil uygulama ve API'de uygula.
+- [x] Oturum sona ermesi ve çıkış: erişim belirteci 1 saat, yenileme anahtarı misafirde süresiz, kayıtlı hesapta 90 gün (kullandıkça uzar); çıkışta sunucuda iptal edilir.
+- [ ] Hesap silme davranışını mobil uygulama ve API'de uygula.
 - [x] Oturum belirteçlerini güvenli yerel depolamada sakla (`expo-secure-store`).
 
 ### P2 — Veriyi buluta taşıma

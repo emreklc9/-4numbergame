@@ -8,7 +8,8 @@ export type AuthUser = {
   isGuest: boolean;
 };
 
-export type Session = { accessToken: string; user: AuthUser };
+export type Session = { accessToken: string; refreshToken: string; user: AuthUser };
+export type AccessSession = { accessToken: string; user: AuthUser };
 
 export class ApiError extends Error {
   constructor(
@@ -21,7 +22,30 @@ export class ApiError extends Error {
 
 const TIMEOUT_MS = 10_000;
 
+// Erişim belirteci süresi dolunca (401) AuthProvider yeni belirteç üretir; istek bir kez tekrarlanır.
+type RefreshHandler = (staleToken: string) => Promise<string | null>;
+let refreshHandler: RefreshHandler | null = null;
+export const setRefreshHandler = (handler: RefreshHandler | null) => {
+  refreshHandler = handler;
+};
+
 export async function request<T>(
+  path: string,
+  init: { method?: string; body?: unknown; token?: string; timeoutMs?: number },
+): Promise<T> {
+  try {
+    return await send<T>(path, init);
+  } catch (error) {
+    if (!(error instanceof ApiError && error.status === 401 && init.token && refreshHandler)) {
+      throw error;
+    }
+    const fresh = await refreshHandler(init.token);
+    if (!fresh) throw error;
+    return send<T>(path, { ...init, token: fresh });
+  }
+}
+
+async function send<T>(
   path: string,
   init: { method?: string; body?: unknown; token?: string; timeoutMs?: number },
 ): Promise<T> {
@@ -66,6 +90,10 @@ export const authApi = {
     }),
   upgrade: (token: string, email: string, password: string) =>
     request<Session>('/auth/upgrade', { method: 'POST', body: { email, password }, token }),
+  refresh: (refreshToken: string) =>
+    request<AccessSession>('/auth/refresh', { method: 'POST', body: { refreshToken } }),
+  logout: (refreshToken: string) =>
+    request<unknown>('/auth/logout', { method: 'POST', body: { refreshToken }, timeoutMs: 4_000 }),
   me: (token: string) => request<AuthUser>('/auth/me', { token }),
   updateProfile: (token: string, body: { displayName?: string; avatarId?: string }) =>
     request<AuthUser>('/auth/me', { method: 'PATCH', body, token }),
