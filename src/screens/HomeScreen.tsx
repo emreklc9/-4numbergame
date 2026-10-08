@@ -63,14 +63,14 @@ export default function HomeScreen({
             <Text style={styles.buttonText}>Tek Oyna</Text>
             <Text style={styles.buttonHint}>Bilgisayara karşı</Text>
           </Pressable>
-          <View style={[styles.gameAction, styles.disabledButton]}>
-            <View style={styles.comingSoon}>
-              <Text style={styles.comingSoonText}>YAKINDA</Text>
-            </View>
+          <Pressable
+            style={[styles.gameAction, { backgroundColor: theme.primary }]}
+            onPress={() => navigation.navigate('Pvp')}
+          >
             <Text style={styles.gameIcon}>⚔</Text>
-            <Text style={styles.disabledButtonText}>PvP</Text>
-            <Text style={styles.disabledHint}>Arkadaşınla oyna</Text>
-          </View>
+            <Text style={styles.buttonText}>PvP</Text>
+            <Text style={styles.buttonHint}>Rakiple canlı oyna</Text>
+          </Pressable>
         </View>
         <Pressable style={styles.howTo} onPress={() => navigation.navigate('HowToPlay')}>
           <Text style={[styles.howToText, { color: theme.primary }]}>❓ Nasıl oynanır?</Text>
@@ -160,21 +160,6 @@ const styles = StyleSheet.create({
   gameIcon: { color: '#fff', fontSize: 28, fontWeight: '800', marginBottom: 10 },
   buttonText: { color: '#fff', fontSize: 22, fontWeight: '800' },
   buttonHint: { color: '#dbeafe', fontSize: 14, marginTop: 4 },
-  disabledButton: {
-    backgroundColor: '#e2e8f0',
-  },
-  disabledButtonText: { color: '#64748b', fontSize: 22, fontWeight: '800' },
-  disabledHint: { color: '#94a3b8', fontSize: 14, marginTop: 4 },
-  comingSoon: {
-    position: 'absolute',
-    top: 14,
-    right: 14,
-    backgroundColor: '#cbd5e1',
-    borderRadius: 99,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  comingSoonText: { color: '#475569', fontSize: 10, fontWeight: '800', letterSpacing: 0.6 },
   recordsArrow: { color: '#64748b', fontSize: 30, lineHeight: 30 },
   modalOverlay: {
     flex: 1,

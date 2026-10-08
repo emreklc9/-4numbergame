@@ -79,7 +79,8 @@
 - [ ] Geliştirme ve üretim ortamlarını ayır; CI, hata izleme ve yedekleme/geri yükleme sürecini kur.
 - [ ] EAS ile iOS ve Android test/release derlemeleri al; mağaza gönderiminden önce sürüm kontrol listesi uygula.
 - [ ] İlk sürüm yayınlandıktan sonra reklam ekle (AdMob, `react-native-google-mobile-ads`). Önerilen: isteğe bağlı ödüllü reklam ("izle, altın kazan"); geçiş reklamı kullanılırsa sıklığı sınırla. Gerekenler: AdMob hesabı, iOS/Android ayrı uygulama ve reklam birimi kimlikleri, iOS ATT izni ve AB için GDPR onayı.
-- [ ] PVP (iki oyunculu mod) tasarla ve geliştir.
+- [x] PVP ilk sürüm: rastgele eşleşme, eş zamanlı, aynı gizli sayı, 60 sn kopma/tahminsiz bekleme kuralı, kazanana 15 altın (backend `/pvp` WebSocket + `PvpScreen`). Cihazlarda iki oyuncuyla denenmeli.
+- [ ] PVP sonraki adımlar: arkadaş daveti, "birbirinin sayısını tahmin" modu, Redis ile çoklu sunucu kuyruğu, tahmin hız sınırı.
 
 ## Önemli uygulama notları
 
