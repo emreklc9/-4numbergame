@@ -12,11 +12,12 @@ import {
 } from 'react-native';
 import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../auth/AuthProvider';
+import { getGoogleIdToken } from '../auth/google';
 
 type Mode = 'login' | 'register';
 
 export default function LoginScreen() {
-  const { signInAsGuest, signInWithEmail, registerWithEmail } = useAuth();
+  const { signInAsGuest, signInWithEmail, registerWithEmail, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,6 +37,12 @@ export default function LoginScreen() {
       setBusy(false);
     }
   };
+
+  const googleSignIn = () =>
+    run(async () => {
+      const idToken = await getGoogleIdToken();
+      if (idToken) await signInWithGoogle(idToken);
+    });
 
   const submit = () => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -72,6 +79,14 @@ export default function LoginScreen() {
           disabled={busy}
         >
           <Text style={styles.primaryText}>Misafir olarak devam et</Text>
+        </Pressable>
+
+        <Pressable
+          style={[styles.googleButton, busy && styles.disabled]}
+          onPress={googleSignIn}
+          disabled={busy}
+        >
+          <Text style={styles.googleText}>G  Google ile devam et</Text>
         </Pressable>
 
         <View style={styles.divider}>
@@ -170,6 +185,15 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
+  googleButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  googleText: { color: '#1f2937', fontSize: 16, fontWeight: '800' },
   secondaryText: { color: '#2563eb', fontSize: 16, fontWeight: '800' },
   switchText: { color: '#475569', textAlign: 'center', fontSize: 14, marginTop: 4 },
   disabled: { opacity: 0.6 },

@@ -6,17 +6,31 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-     "android": {
-      "package": "com.cordelio.4numbergame"
-    },
     "ios": {
-      "bundleIdentifier": "com.cordelio.4numbergame"
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cordelio.numbergame"
+    },
+    "android": {
+      "package": "com.cordelio.numbergame",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.527646470798-qi6tpmkf2dkh3b6oo0t6ulh0eafi9edp"
+        }
+      ]
     ]
   }
 }

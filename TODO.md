@@ -44,7 +44,7 @@
 
 - [x] Misafir oturumu oluşturma ve mevcut oturumu geri yükleme akışı.
 - [ ] E-posta doğrulama ve şifre sıfırlama ekle. (Kayıt ve giriş hazır.)
-- [ ] Mobilde Google Sign-In'i bağla. Backend (`/auth/google`, `/auth/google/link`) hazır. Gerekenler: Android ve iOS OAuth istemcileri, development build, `GOOGLE_CLIENT_ID` listesine yeni kimlikler. Sohbette paylaşılan Client Secret yenilenmeli.
+- [ ] Mobilde Google Sign-In kodlandı (`src/auth/google.ts`, giriş ekranında düğme); development build ile gerçek hesapla denenmeli. Sohbette paylaşılan Client Secret yenilenmeli.
 - [x] Hesap bağlama ve çakışan e-posta durumlarını güvenli biçimde ele al. (Misafir → e-posta/Google dönüşümü hazır.)
 - [x] Oturum sona ermesi ve çıkış: erişim belirteci 1 saat, yenileme anahtarı misafirde süresiz, kayıtlı hesapta 90 gün (kullandıkça uzar); çıkışta sunucuda iptal edilir.
 - [x] Hesap silme uygulanmayacak (karar). Şifre değiştirme (`POST /auth/password`), kayıtta şifre tekrarı ve en az 6 karakter kuralı eklendi.
@@ -78,6 +78,8 @@
 - [ ] Gizlilik politikası, hesap/veri silme süreci ve mağaza izinlerini tamamla.
 - [ ] Geliştirme ve üretim ortamlarını ayır; CI, hata izleme ve yedekleme/geri yükleme sürecini kur.
 - [ ] EAS ile iOS ve Android test/release derlemeleri al; mağaza gönderiminden önce sürüm kontrol listesi uygula.
+- [ ] İlk sürüm yayınlandıktan sonra reklam ekle (AdMob, `react-native-google-mobile-ads`). Önerilen: isteğe bağlı ödüllü reklam ("izle, altın kazan"); geçiş reklamı kullanılırsa sıklığı sınırla. Gerekenler: AdMob hesabı, iOS/Android ayrı uygulama ve reklam birimi kimlikleri, iOS ATT izni ve AB için GDPR onayı.
+- [ ] PVP (iki oyunculu mod) tasarla ve geliştir.
 
 ## Önemli uygulama notları
 
