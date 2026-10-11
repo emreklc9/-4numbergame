@@ -82,7 +82,7 @@ function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <StatusBar style={store?.equipped.theme === 'midnight' ? 'light' : 'auto'} />
+      <StatusBar style={theme.dark ? 'light' : 'auto'} />
       <Tab.Navigator
         initialRouteName="HomeTab"
         screenOptions={{

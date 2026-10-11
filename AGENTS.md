@@ -1,41 +1,71 @@
-This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+# Sayı Avı — ajan notları
 
-## Expo has changed — do not trust your training data
+Expo SDK 57 / React Native mobil oyunu. Ürün adı Sayı Avı; paket adı `-4numbergame`. Backend ayrı depodadır: `../../+4nubergamebackend/-4numbergamebackend` (NestJS, PostgreSQL, `/v1`, port 3003).
 
-Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
+Kullanıcıyla Türkçe konuş. Kod ve mevcut yorumlar Türkçe kalabilir.
 
-1. Read the major version of the `expo` package in `package.json`.
-2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
-3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
+## Expo sürümü — eğitim verisine güvenme
 
-## Commands
+Expo her SDK’da API kırar. Expo, EAS veya React Native API’sine dokunmadan önce:
 
-Use `bunx` instead of `npx` if the project uses bun (`bun.lock` present).
+1. `package.json` içindeki `expo` ana sürümünü oku (şu an 57).
+2. Sürümlü dokümanı aç: `https://docs.expo.dev/versions/v57.0.0/`
+3. Gerekirse `https://docs.expo.dev/llms.txt` indeksinden ilgili sayfaya git. Ezberden yazma.
+
+## Komutlar
+
+Kilit dosyası `package-lock.json`. Kurulum ve betikler npm ile yürür. `package.json` içindeki `packageManager: yarn` alanı kilit dosyasıyla çelişir; ikinci bir kilit dosyası ekleme.
 
 ```bash
-npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
-npx expo start              # start the dev server
-npx expo lint               # lint
-npx tsc --noEmit            # typecheck
-npx expo-doctor             # diagnose dependency and config issues
-npx expo install --fix      # fix incompatible package versions
+npm install
+npx expo install <paket>   # npm/yarn add yerine; SDK uyumlu sürüm seçer
+npx expo start
+npx expo run:ios           # native modül (Google Sign-In) için development build
+npx expo run:android
+npx tsc --noEmit
 ```
 
-Run lint and typecheck before declaring any task done.
+ESLint ve `expo lint` bu projede kurulu değil. Yeni bir iş bitince en azından `npx tsc --noEmit` çalıştır. Mobilde test betiği yok.
 
-## Navigation & Routing
+Backend (ayrı dizin): `npm run start:dev`, `npm test`. PvP ve WebSocket paketleri şu an `devDependencies` içinde; üretim kurulumunda düşer, `dependencies`e alınmadan prod’a çıkma.
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
+## Navigasyon
 
-## Building with EAS
+**React Navigation** kullanılıyor (`App.tsx`: alt sekme + native stack). Ekranlar `src/screens/` altında. Expo Router yok, `src/app/` yok.
 
-Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
-Docs: https://docs.expo.dev/eas/index.md
+Kullanıcı açıkça istemedikçe Expo Router’a taşıma. Yeni ekran: `src/screens` + `RootStackParamList` / sekme kaydı.
 
-## Rules
+## Native proje
 
-- If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
-- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
-- Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+`ios/` ve `android/` gitignore’da. Prebuild üretir. Elle düzenleme; native ayar `app.json` ve plugin’lerde. `ios/` veya `android/` yerelde duruyorsa bu, onları kaynağa al anlamına gelmez.
+
+Expo Go, Google Sign-In gibi native modülleri içermez. Bu modülden sonra development build gerekir.
+
+## Oyun kuralları
+
+- 3 / 4 / 5 basamak. Rakamlar farklı. Gizli sayının ilk rakamı 0 değil.
+- `+` doğru yer, `−` yanlış yer. Değerlendirme: `src/game/logic.ts` ve backend `src/games/game-logic.ts`. İkisini birlikte güncelle.
+- Çevrimiçi oyunda gizli sayı sunucuda kalır. İstemciye bitmeden secret döndürme.
+- Çevrimdışı galibiyet `src/game/outbox.ts` kuyruğuna yazılır (`clientId` ile tekil). Sunucu bunları doğrulanmamış sayar; liderlik tablosuna koyma.
+- Altın formülü iki tarafta `max(21 - tahmin, 1)`. İpucu maliyeti 1. Mağaza kataloğu `src/game/store.ts` ile backend `wallet.constants.ts` içinde aynı id’lerle durur; fiyat veya id değişince ikisini de güncelle.
+- PvP bellek içi, tek süreç ve sıra tabanlıdır. İki mod vardır ve kuyrukları ayrıdır: `shared` aynı gizli sayı, `duel` herkes kendi sayısını yazar ve rakibinin sayısını tahmin eder. Süre yalnızca sırası gelen oyuncuda işler; tahmin bitince rakibin 30 saniyesi başlar. Sayı yazma adımında ikisinin de 30 saniyesi birlikte işler. Süreler backend `pvp.constants.ts`: 30 sn, kopma 60 sn, ödül 15 altın, 4 basamak.
+
+## Güvenlik
+
+- Uygulamaya PostgreSQL bilgisi, `JWT_SECRET` veya Google client secret koyma. Google istemci kimlikleri `src/auth/google.ts` ve `app.json` içindedir; bunlar gizli değildir.
+- Oturum `expo-secure-store`. API adresi yalnızca `EXPO_PUBLIC_API_URL` (`src/config.ts`).
+- Altın, rekor ve satın alma istemcinin söylediği bakiyeye güvenmez. Yeni ödül veya harcama sunucu işlemi ve `gold_transactions.ref` ile tekil olmalı.
+- Backend CORS şu an herkese açık, `synchronize` üretim dışında açık. Üretim değişikliğinde ikisini de sıkılaştır; migration’sız şema değişikliğini prod varsayma.
+
+## Kaplama ve ilerideki kaçış yolu
+
+Bugünkü sürüm sade sayı tahmin oyunu olarak kalır. Oynanış, ekran akışı ve kurallar değişmez.
+
+Kaçış teması yalnızca görünümdür: siyah kilit kutusu, yeşil rakam. Banka soygunu, düşman takibi veya durak durak şifre rotası bu sürüme girmez. Kullanıcı açıkça istemedikçe yeni mod, harita veya senaryo ekranı ekleme.
+
+İleride denenebilecek yol, ayrı bir kaçış modudur: her durakta bugünkü tahmin döngüsü, bitince sonraki kilit. O da kural değiştirmez; `+` / `−` aynı kalır. Bu fikir nottur, görev değildir.
+
+## Dokunma
+
+- `TODO.md` güncel ürün listesidir. Bitmiş maddenin üzerine aynı işi yeniden yazma.
+- Reklam (AdMob) ilk sürümden sonra. Kullanıcı istemedikçe ekleme.

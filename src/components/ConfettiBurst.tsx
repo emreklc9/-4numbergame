@@ -83,7 +83,8 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     alignItems: 'center',
     paddingTop: 80,
-    overflow: 'hidden',
+    zIndex: 20,
+    elevation: 20,
   },
   particle: { position: 'absolute', width: 9, height: 14, borderRadius: 2 },
 });

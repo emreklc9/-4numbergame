@@ -327,12 +327,16 @@ export default function GameScreen({
                 <Pressable
                   style={[
                     styles.input,
-                    activeIndex === index && styles.activeInput,
-                    lockedDigits[index] && styles.lockedInput,
+                    { backgroundColor: theme.digit.background, borderColor: theme.digit.border },
+                    activeIndex === index && { borderColor: theme.digit.activeBorder, borderWidth: 2 },
+                    lockedDigits[index] && {
+                      backgroundColor: theme.digit.lockedBackground,
+                      borderColor: theme.digit.lockedBorder,
+                    },
                   ]}
                   onPress={() => !lockedDigits[index] && setActiveIndex(index)}
                 >
-                  <Text style={styles.inputText}>{value}</Text>
+                  <Text style={[styles.inputText, { color: theme.digit.text }]}>{value}</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.lockButton, lockedDigits[index] && styles.lockButtonActive]}
@@ -385,7 +389,7 @@ export default function GameScreen({
         renderItem={({ item, index }) => (
           <View style={styles.row}>
             <Text style={styles.rowIndex}>{attempts.length - index}.</Text>
-            <Text style={styles.rowGuess}>{item.guess}</Text>
+            <Text style={[styles.rowGuess, { color: theme.digit.text }]}>{item.guess}</Text>
             <Text style={styles.rowFeedback}>{formatFeedback(item.feedback)}</Text>
           </View>
         )}
@@ -454,7 +458,7 @@ const styles = StyleSheet.create({
   },
   keyText: { color: '#1e293b', fontSize: 20, fontWeight: '800' },
   eliminatedKey: { backgroundColor: '#fee2e2', borderColor: '#fca5a5' },
-  eliminatedKeyText: { color: '#b91c1c' },
+  eliminatedKeyText: { color: '#b91c1c', textDecorationLine: 'line-through' },
   error: { color: '#dc2626', textAlign: 'center' },
   rewardPreview: { color: '#b45309', fontSize: 14, fontWeight: '700', textAlign: 'center', marginTop: -8 },
   keypadHint: { color: '#64748b', fontSize: 12, textAlign: 'center', marginTop: -8 },

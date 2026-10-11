@@ -1,89 +1,97 @@
 # Sayı Avı — Proje analizi ve TODO
 
+Son inceleme: 9 Ekim 2026. Mobil uygulama bu depo (`-4numbergame`). Backend kardeş dizinde: `+4nubergamebackend/-4numbergamebackend`.
+
 ## Mevcut durum
 
-- Expo ve React Native ile geliştirilmiş, dikey kullanım odaklı bir mobil oyun.
-- Tek oyunculu sayı tahmin oyunu; 3, 4 ve 5 basamaklı modlar var.
-- Oyun akışı, tahmin kontrolü ve ipuçları `src/game/logic.ts` ve `src/screens/GameScreen.tsx` içinde.
-- Ana ekran, mağaza ve rekorlar ekranı mevcut. PvP ekranda henüz kullanılamıyor.
-- Giriş ekranı (misafir ve e-posta/şifre) var; oturum `expo-secure-store` ile saklanıyor.
-- Oyun, altın, mağaza ve rekorlar sunucuda (hesaba bağlı). Çevrimdışıyken oyun, rekor ve altın kazanma/harcama cihazda `outbox` içinde birikir; mağazadan satın alma yalnızca çevrimiçiyken yapılır.
-- Ayrı bir NestJS + PostgreSQL backend var (`+4nubergamebackend`): misafir/e-posta/Google girişi, sunucu taraflı oyun doğrulama (`/games`), rekorlar ve liderlik tablosu.
-- Navigasyonda React Navigation kullanılıyor. `AGENTS.md` ise Expo Router kullanımını tarif ediyor; yeni ekranlar eklenmeden önce bu tercih netleştirilmeli, sırf bu yüzden mevcut navigasyon hemen taşınmamalı.
-- `app.json`, iOS, Android ve web yapılandırması içeriyor; Android/iOS için gerçek cihaz testi ve mağaza dağıtımı ayrıca yapılmalı.
+- Expo SDK 57, React Native 0.86, dikey mobil oyun. Görünen ad kodda “Sayı Avı”; `app.json` adı hâlâ `-4numbergame`.
+- Tek oyunculu 3, 4 ve 5 basamak. Kurallar `src/game/logic.ts` ve backend `src/games/game-logic.ts`. Çevrimiçi oyunda gizli sayı sunucuda.
+- Ana sayfa, mağaza, rekorlar, nasıl oynanır, profil ve PvP bağlı. PvP oynanabilir; iki cihazla henüz doğrulanmadı.
+- Giriş: misafir, e-posta/şifre, Google. Oturum `expo-secure-store`. Profilde ad, avatar, şifre değiştirme ve çıkış var.
+- Altın, mağaza ve rekorlar hesaba bağlı. Çevrimdışı oyun `outbox` ile birikir. Mağaza alışverişi yalnızca çevrimiçi.
+- Backend: NestJS + PostgreSQL, `/v1`. Kimlik, oyun, cüzdan, rekor, liderlik ve PvP WebSocket var. Birim testi oyun mantığı ve PvP servisinde. Mobilde test yok, ESLint yok.
+- Navigasyon React Navigation. Expo Router’a geçilmeyecek (aşağıda karar).
 
 ## Önerilen hedef mimari
 
-- Mobil uygulama: Expo / React Native (iOS ve Android).
-- Sunucu: NestJS REST API.
-- Kalıcı veri: PostgreSQL; mobil uygulama PostgreSQL'e doğrudan bağlanmaz, tüm erişim API üzerinden yapılır.
-- Kimlik yöntemleri: misafir oturumu, e-posta/şifre ve Google ile giriş. “Gmail ile giriş”, Google OAuth/Google Sign-In anlamına gelir; kullanıcının Gmail parolasını uygulama almamalı.
-- Misafirden kayıtlı hesaba geçişte aynı kullanıcı verisini koruyacak hesap bağlama akışı.
-- Sunucu tarafında kullanıcı, giriş sağlayıcıları, oyun kayıtları, altın hareketleri ve envanter tutulur. Altın ve satın alma gibi değerli işlemlerin doğruluğu istemciye bırakılmaz.
-- Erişim/yenileme belirteçleri güvenli biçimde saklanır; PostgreSQL bağlantı bilgileri ve OAuth sırları mobil uygulamaya konmaz.
+- Mobil: Expo / React Native (iOS ve Android).
+- Sunucu: NestJS REST + PvP için Socket.IO.
+- Kalıcı veri: PostgreSQL. Uygulama veritabanına bağlanmaz.
+- Kimlik: misafir, e-posta/şifre, Google Sign-In. Uygulama Gmail parolası almaz.
+- Misafir, kayıtlı hesaba dönüşünce aynı kullanıcı kalır. Çakışan e-postada misafir ilerlemesi birleşmez (aşağıda açık madde).
+- Altın ve satın alma sunucuda, `gold_transactions` içinde tekil `ref` ile.
+- Belirteçler güvenli depoda. Veritabanı ve OAuth sırrı mobil uygulamada yok.
 
 ## TODO
 
 ### P0 — Ürün kararları ve temel hazırlık
 
 - [x] Misafir, e-posta/şifre ve Google girişinin ilk sürümde destekleneceğini doğrula.
-- [ ] Hesap silme, e-posta doğrulama, şifre sıfırlama ve misafir verisini hesaba aktarma kurallarını belirle.
-- [ ] React Navigation ile devam mı edilecek, Expo Router'a geçiş mi yapılacak karar ver.
-- [ ] iOS ve Android için uygulama adı, paket/bundle kimlikleri, ikonlar, gizlilik metni ve destek iletişim bilgilerini tamamla.
-- [ ] `app.json` içinde referans verilen görsel dosyalarının projede bulunduğunu doğrula.
+- [x] Navigasyon: React Navigation’da kal. Expo Router’a taşıma; `AGENTS.md` buna göre güncellendi.
+- [ ] Hesap silme yok (karar duruyor). E-posta doğrulama, şifre sıfırlama ve “misafir Google’a bağlanırken e-posta doluysa ne olur” kuralını yaz. Şu an dolu e-postada mevcut hesap açılır, misafirin altın ve rekoru geride kalır.
+- [ ] Mağaza adı, paket kimliği ve ikonlar var (`com.cordelio.numbergame`, `assets/`). Görünen adı “Sayı Avı” yap, splash’i `app.json`’a bağla, gizlilik metni ve destek iletişimini ekle.
+- [x] `app.json`’un gösterdiği ikon, adaptive icon ve favicon dosyaları `assets/` içinde duruyor.
 
 ### P1 — NestJS ve PostgreSQL temeli
 
-- [x] NestJS API projesini ayrı bir uygulama olarak kur; yapılandırma ve sırları ortam değişkenlerinden yükle. (Ayrı depo: `-4numbergamebackend`)
-- [ ] PostgreSQL için migration akışını ve yedekleme yaklaşımını kur. (Bağlantı ve yerel veritabanı hazır; `synchronize` yalnızca geliştirmede açık.)
-- [ ] Veri modelini tamamla: kullanıcılar, oyunlar ve rekorlar hazır; altın işlem defteri ve mağaza envanteri de hazır.
-- [x] DTO doğrulaması, API sürümleme (`/v1`) ve sağlık kontrolü uç noktası ekle.
-- [ ] Denetim izi ve loglama gereksinimlerini tanımla. (Rate limit ve helmet hazır; CORS hâlâ tamamen açık, üretimden önce kısıtlanmalı.)
+- [x] NestJS API ayrı uygulamada. Sırlar ortam değişkeninden gelir.
+- [ ] PostgreSQL migration ve yedek. Bağlantı var; `synchronize` yalnızca geliştirmede açık.
+- [x] Veri modeli: kullanıcı, oyun, rekor, altın defteri, mağaza, PvP maç kaydı.
+- [x] DTO doğrulaması, `/v1`, `GET /v1/health`.
+- [ ] Üretimden önce CORS’u kısıtla (`enableCors()` şu an açık). Denetim izi ve loglama hâlâ tanımsız. Rate limit ve helmet var.
+- [ ] Socket.IO paketleri backend `devDependencies` içinde (`@nestjs/websockets`, `@nestjs/platform-socket.io`, `socket.io`). Üretimde `devDependencies` kurulmazsa PvP açılmaz; `dependencies`e al.
+- [ ] `.env.example` içinde gerçek gibi duran bir veritabanı parolası var. Yer tutucuya çevir; bu parola bir yerde kullanıldıysa değiştir. Google client secret bu akışta kullanılmıyor (kimlik belirteci doğrulanıyor); örnek dosyada ve sohbette duruyorsa yenile ve kaldır.
 
 ### P1 — Kimlik doğrulama ve misafir akışı
 
-- [x] Misafir oturumu oluşturma ve mevcut oturumu geri yükleme akışı.
-- [ ] E-posta doğrulama ve şifre sıfırlama ekle. (Kayıt ve giriş hazır.)
-- [ ] Mobilde Google Sign-In kodlandı (`src/auth/google.ts`, giriş ekranında düğme); development build ile gerçek hesapla denenmeli. Sohbette paylaşılan Client Secret yenilenmeli.
-- [x] Hesap bağlama ve çakışan e-posta durumlarını güvenli biçimde ele al. (Misafir → e-posta/Google dönüşümü hazır.)
-- [x] Oturum sona ermesi ve çıkış: erişim belirteci 1 saat, yenileme anahtarı misafirde süresiz, kayıtlı hesapta 90 gün (kullandıkça uzar); çıkışta sunucuda iptal edilir.
-- [x] Hesap silme uygulanmayacak (karar). Şifre değiştirme (`POST /auth/password`), kayıtta şifre tekrarı ve en az 6 karakter kuralı eklendi.
-- [x] Oturum belirteçlerini güvenli yerel depolamada sakla (`expo-secure-store`).
+- [x] Misafir oturumu ve mevcut oturumu geri yükleme.
+- [ ] E-posta doğrulama ve şifre sıfırlama. Kayıt ve giriş hazır.
+- [ ] Google Sign-In kodlu (`src/auth/google.ts`). Expo Go’da çalışmaz; development build ile gerçek hesap şart.
+- [x] Misafir → e-posta (`/auth/upgrade`) ve misafir → Google (`/auth/google/link`) aynı kullanıcıda kalır. E-posta başka hesapta kayıtlıysa misafir verisi birleşmez.
+- [x] Erişim belirteci 1 saat. Yenileme anahtarı misafirde süresiz, kayıtlı hesapta 90 gün (kullandıkça uzar). Çıkışta sunucuda iptal.
+- [x] Hesap silme yok. Şifre değiştirme `POST /auth/password`. Kayıtta şifre tekrarı ve en az 6 karakter var.
+- [x] Belirteçler `expo-secure-store`.
+- [ ] Google ile var olan e-posta hesabına girilince eski şifre siliniyor (doğrulanmamış e-posta ile ele geçirmeyi kesmek için). Bunu gizlilik metninde anlat.
 
 ### P2 — Veriyi buluta taşıma
 
-- [x] Oyunu `POST /games` ve `POST /games/:id/guesses` üzerinden oyna. Sunucuya ulaşılamazsa çevrimdışı oynanır; rekorlar cihazdaki outbox'ta birikir ve `POST /records/offline` ile "doğrulanmamış" olarak toplu gönderilir.
-- [x] Rekorlar ekranında `/records` ve `/leaderboard` verilerini göster (doğrulanmamış rekorları ayırt et).
-- [x] Altın bakiyesini sunucuya taşı. Kazanç ve ipucu maliyeti sunucuda atomik düşer; çevrimdışı kazanç günde en fazla 200 altınla sınırlı.
-- [x] Altın, rekor ve mağaza verilerinin sahipliğini kullanıcı hesabıyla ilişkilendir. (Eski cihaz içi altın/rekorlar aktarılmadı.)
-- [x] Tekrar denemelerde çift kayıt/çift ödül oluşmasını engelle (`clientId` + işlem defterinde tekil `ref`).
-- [x] Oyun rekorlarını sunucuya kaydet ve kullanıcının rekorlarını API'den getir.
-- [x] Altın kazanma/harcama hareketlerini sunucuda atomik işlem olarak uygula (`gold_transactions`).
-- [x] Mağaza satın alma (yalnızca çevrimiçi) ve donatma durumunu hesaplar arasında eşitle.
-- [ ] Çevrimdışı kazanılan altının ve rekorların kötüye kullanımına karşı ek kurallar (ör. cihaz başına sınır) değerlendir.
+- [x] Oyun `POST /games` ve `POST /games/:id/guesses`. İpucu `POST /games/:id/hints`. Sunucu yoksa çevrimdışı oyun; rekor ve harcama `POST /records/offline`.
+- [x] Rekorlar `/records` ve `/leaderboard`. Doğrulanmamış rekor liderlikte yok.
+- [x] Altın sunucuda. Çevrimdışı kazanç günde en fazla 200.
+- [x] Altın, rekor ve mağaza kullanıcıya bağlı. Eski cihaz içi bakiye taşınmadı.
+- [x] `clientId` ve defterdeki tekil `ref` çift ödülü keser.
+- [x] Mağaza satın alma yalnızca çevrimiçi; donatma hesaba yazılır.
+- [ ] Çevrimdışı rekor ve altın için cihaz / hesap başına ek sınır. İstemci istediği galibiyeti kuyruğa koyabilir.
+- [ ] Çevrimdışı oyunda 100 tahmin sınırı yok. Sunucu `MAX_ATTEMPTS = 100`. Kaybedince `GameScreen` hemen yeni oyun açıyor; gizli sayı yeni oyunun hata satırında kalıyor.
 
 ### P2 — Mobil ekranlar ve hata durumları
 
-- [x] Giriş, kayıt, misafir devam etme ve çıkış akışını ekle. (Ayrı bir hesap ekranı henüz yok.)
-- [ ] Yükleniyor, çevrimdışı, API hatası ve oturum süresi doldu durumlarını ekranlarda anlaşılır göster.
-- [ ] Kayıtlı kullanıcı için hesap/ eşitleme durumunu görünür kıl.
-- [ ] API istemcisini tek noktada topla; zaman aşımı, tekrar deneme ve kimlik belirteci yenilemesini yönet.
-- [ ] Ekran okuyucu, dinamik yazı boyutu, güvenli alanlar ve küçük/büyük ekran düzenlerini kontrol et.
+- [x] Giriş, kayıt, misafir, Google, çıkış.
+- [x] Profil ekranı: ad, avatar, şifre, misafir çıkış uyarısı.
+- [ ] Yükleniyor, çevrimdışı, API hatası ve oturum süresi doldu hallerini her ekranda aynı dille göster. Oyun ve PvP’de kısmen var; mağaza ve rekorlar dağılmış.
+- [ ] Kayıtlı hesapta eşitleme durumunu (çevrimiçi / kuyrukta bekleyen) görünür yap.
+- [ ] API zaman aşımı ve 401 yenileme `src/auth/api.ts` içinde. Tekrar deneme politikası yok; PvP soketi bu istemciyi kullanmıyor.
+- [ ] Ekran okuyucu, dinamik yazı, güvenli alan, küçük ekran.
+- [ ] Ana sekme etiketi “Home”; diğerleri Türkçe. “Ana sayfa” yap.
+- [ ] `package.json` `packageManager` alanı yarn diyor, kilit dosyası `package-lock.json`. Birini seç.
 
 ### P3 — Test, güvenlik ve yayın
 
-- [ ] NestJS servisleri için birim testleri ve API akışları için entegrasyon testleri yaz. (Oyun mantığı için birim testi var.)
-- [ ] Misafirden Google/e-posta hesabına geçiş, oturum yenileme, çevrimdışı kullanım ve eşzamanlı altın işlemlerini uçtan uca test et.
-- [ ] iOS ve Android gerçek cihazlarında giriş, klavye, ağ kesintisi ve uygulama yeniden başlatma senaryolarını doğrula.
-- [ ] Gizlilik politikası, hesap/veri silme süreci ve mağaza izinlerini tamamla.
-- [ ] Geliştirme ve üretim ortamlarını ayır; CI, hata izleme ve yedekleme/geri yükleme sürecini kur.
-- [ ] EAS ile iOS ve Android test/release derlemeleri al; mağaza gönderiminden önce sürüm kontrol listesi uygula.
-- [ ] İlk sürüm yayınlandıktan sonra reklam ekle (AdMob, `react-native-google-mobile-ads`). Önerilen: isteğe bağlı ödüllü reklam ("izle, altın kazan"); geçiş reklamı kullanılırsa sıklığı sınırla. Gerekenler: AdMob hesabı, iOS/Android ayrı uygulama ve reklam birimi kimlikleri, iOS ATT izni ve AB için GDPR onayı.
-- [x] PVP ilk sürüm: rastgele eşleşme, eş zamanlı, aynı gizli sayı, 60 sn kopma/tahminsiz bekleme kuralı, kazanana 15 altın (backend `/pvp` WebSocket + `PvpScreen`). Cihazlarda iki oyuncuyla denenmeli.
-- [ ] PVP sonraki adımlar: arkadaş daveti, "birbirinin sayısını tahmin" modu, Redis ile çoklu sunucu kuyruğu, tahmin hız sınırı.
+- [ ] Backend entegrasyon testleri (kimlik, altın, çevrimdışı rekor, mağaza). Oyun mantığı ve PvP servisi birim testi var. Mobil test yok.
+- [ ] Misafirden kayıtlı hesaba geçiş, oturum yenileme, çevrimdışı kuyruk ve eşzamanlı altın için uçtan uca test.
+- [ ] Gerçek cihazda giriş, klavye, ağ kesintisi, PvP (iki oyuncu) ve yeniden başlatma.
+- [ ] Gizlilik politikası ve mağaza izinleri. Hesap silme bilinçli olarak yok.
+- [ ] Geliştirme / üretim ayrımı, CI, hata izleme, yedek.
+- [ ] EAS development ve release derlemeleri. `eas.json` yok.
+- [ ] İlk sürümden sonra reklam (AdMob). İsteğe bağlı ödüllü reklam düşünülüyor. Geçiş reklamı sık olmasın. ATT ve GDPR onayı gerekir.
+- [x] PvP ilk sürüm: rastgele eşleşme, sıra tabanlı, kazanana 15 altın. İki mod: aynı gizli sayı, ya da herkes kendi sayısını yazıp rakibinin sayısını tahmin eder. Süre yalnızca sırası gelende 30 sn, kopma payı 60 sn. Bellek içi kuyruk, tek sunucu süreci.
+- [ ] PvP: maç kaydı veritabanına yazılamazsa istemci yine de “+15 altın” gösteriyor. Ödülü kayıt başarılıysa göster.
+- [ ] PvP sonraki adımlar: arkadaş daveti, birbirinin sayısını tahmin, Redis ile çoklu süreç, tahmin hız sınırı.
+- [ ] Misafir temizliği `pvp_matches` satırını siliyor. Entity yorumu maç geçmişinin kullanıcı silinse de kalacağını söylüyor. Kayıtlı rakibin satırı da gidiyor; ikisini hizala.
 
 ## Önemli uygulama notları
 
-- Google ile girişte kullanıcı parolası alınmaz; Google kimlik doğrulamasını sağlayıcı yürütür ve backend alınan belirteci doğrular.
-- Mobil istemciye PostgreSQL kullanıcı adı/parolası veya sunucu OAuth sırrı eklenmez.
-- Misafir ilerlemesi hesapla birleştirilirken, özellikle altın bakiyesi/ödüller için istemcinin gönderdiği değerlere güvenilmez; sunucu tarafı doğrulama ve işlem kaydı gerekir.
+- Google girişinde parola alınmaz. Backend kimlik belirtecini doğrular.
+- Mobil istemciye veritabanı bilgisi veya OAuth sırrı eklenmez.
+- Çevrimdışı altın istemci tahminiyle gösterilir; kesin tutarı sunucu keser.
+- Oyun kuralı, ipucu fiyatı ve mağaza kimlikleri iki depoda kopya. Birini değiştirince diğerini de değiştir.

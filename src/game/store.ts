@@ -1,10 +1,11 @@
-export type ThemeId = 'classic' | 'midnight' | 'sunset';
+export type ThemeId = 'classic' | 'midnight' | 'sunset' | 'escape';
 export type KeypadSkinId = 'classic' | 'mint' | 'violet';
 export type WinEffectId = 'confetti' | 'golden' | 'neon';
 export type StoreItemId =
   | 'theme-classic'
   | 'theme-midnight'
   | 'theme-sunset'
+  | 'theme-escape'
   | 'keypad-classic'
   | 'keypad-mint'
   | 'keypad-violet'
@@ -74,6 +75,14 @@ export const STORE_ITEMS: StoreItem[] = [
     value: 'sunset',
   },
   {
+    id: 'theme-escape',
+    name: 'Kaçış',
+    description: 'Siyah kilit, yeşil rakam. Yalnızca görünüm.',
+    price: 0,
+    type: 'theme',
+    value: 'escape',
+  },
+  {
     id: 'keypad-mint',
     name: 'Nane Tuş Takımı',
     description: 'Ferahlık veren yeşil tuşlar',
@@ -107,11 +116,86 @@ export const STORE_ITEMS: StoreItem[] = [
   },
 ];
 
+export type ThemeDigits = {
+  background: string;
+  border: string;
+  text: string;
+  activeBorder: string;
+  lockedBackground: string;
+  lockedBorder: string;
+};
+
+export type Theme = {
+  background: string;
+  primary: string;
+  primaryText: string;
+  text: string;
+  dark: boolean;
+  digit: ThemeDigits;
+};
+
 export const THEMES = {
-  classic: { background: '#f8fafc', primary: '#2563eb', primaryText: '#fff', text: '#0f172a' },
-  midnight: { background: '#111827', primary: '#7c3aed', primaryText: '#fff', text: '#f8fafc' },
-  sunset: { background: '#fff7ed', primary: '#ea580c', primaryText: '#fff', text: '#9a3412' },
-} satisfies Record<ThemeId, { background: string; primary: string; primaryText: string; text: string }>;
+  classic: {
+    background: '#f8fafc',
+    primary: '#2563eb',
+    primaryText: '#fff',
+    text: '#0f172a',
+    dark: false,
+    digit: {
+      background: '#fff',
+      border: '#93c5fd',
+      text: '#1e3a8a',
+      activeBorder: '#2563eb',
+      lockedBackground: '#dbeafe',
+      lockedBorder: '#60a5fa',
+    },
+  },
+  midnight: {
+    background: '#111827',
+    primary: '#7c3aed',
+    primaryText: '#fff',
+    text: '#f8fafc',
+    dark: true,
+    digit: {
+      background: '#1f2937',
+      border: '#6d28d9',
+      text: '#e9d5ff',
+      activeBorder: '#a78bfa',
+      lockedBackground: '#4c1d95',
+      lockedBorder: '#c4b5fd',
+    },
+  },
+  sunset: {
+    background: '#fff7ed',
+    primary: '#ea580c',
+    primaryText: '#fff',
+    text: '#9a3412',
+    dark: false,
+    digit: {
+      background: '#fff',
+      border: '#fdba74',
+      text: '#9a3412',
+      activeBorder: '#ea580c',
+      lockedBackground: '#ffedd5',
+      lockedBorder: '#fb923c',
+    },
+  },
+  escape: {
+    background: '#050805',
+    primary: '#16a34a',
+    primaryText: '#052e16',
+    text: '#bbf7d0',
+    dark: true,
+    digit: {
+      background: '#020617',
+      border: '#14532d',
+      text: '#4ade80',
+      activeBorder: '#22c55e',
+      lockedBackground: '#052e16',
+      lockedBorder: '#4ade80',
+    },
+  },
+} satisfies Record<ThemeId, Theme>;
 
 export const KEYPAD_SKINS = {
   classic: { background: '#fff', border: '#cbd5e1', text: '#1e293b' },
